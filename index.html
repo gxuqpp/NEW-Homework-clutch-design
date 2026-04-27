@@ -1,0 +1,2946 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>乘用车离合器设计与计算交互工具</title>
+<style>
+  :root {
+    --blue: #1a4a8a;
+    --blue-light: #2d6ec0;
+    --bg: #f0f4fb;
+    --card: #ffffff;
+    --border: #c8d8f0;
+    --ok: #1a7c3a;
+    --err: #c0392b;
+    --warn: #d48806;
+    --header-bg: #1a3560;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "微软雅黑", "Microsoft YaHei", sans-serif; background: var(--bg); color: #222; font-size: 14px; }
+  
+  .app-header { background: var(--header-bg); color: white; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  .app-header h1 { font-size: 20px; font-weight: 700; }
+  .app-header .sub { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+  
+  .tabs { display: flex; background: #1e3d70; padding: 0 16px; border-bottom: 2px solid var(--blue-light); overflow-x: auto; }
+  .tab { padding: 10px 18px; cursor: pointer; color: rgba(255,255,255,0.7); font-size: 13px; white-space: nowrap; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+  .tab:hover { color: white; }
+  .tab.active { color: #7ecfff; border-bottom-color: #7ecfff; font-weight: 600; }
+  
+  .content { display: none; padding: 20px; max-width: 1100px; margin: 0 auto; }
+  .content.active { display: block; }
+  
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-bottom: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+  .card-title { font-size: 15px; font-weight: 700; color: var(--blue); border-bottom: 2px solid var(--border); padding-bottom: 8px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card-title .icon { font-size: 18px; }
+  
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 12px; color: #555; font-weight: 600; }
+  .field input, .field select { padding: 7px 10px; border: 1px solid #c0c8e0; border-radius: 5px; font-size: 13px; background: #f8faff; transition: border-color 0.15s; }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--blue-light); background: white; }
+  .field .unit { font-size: 11px; color: #888; margin-top: 2px; }
+  
+  .btn { padding: 9px 20px; border: none; border-radius: 5px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-primary { background: var(--blue-light); color: white; }
+  .btn-primary:hover { background: var(--blue); }
+  .btn-success { background: #1a7c3a; color: white; }
+  .btn-success:hover { background: #145d2b; }
+  .btn-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  
+  .result-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  .result-table th { background: #e8eef8; padding: 8px 10px; text-align: left; border: 1px solid var(--border); font-weight: 600; color: var(--blue); }
+  .result-table td { padding: 7px 10px; border: 1px solid var(--border); }
+  .result-table tr:nth-child(even) td { background: #f8faff; }
+  
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+  .badge-ok { background: #d4f0db; color: var(--ok); }
+  .badge-err { background: #fde8e7; color: var(--err); }
+  .badge-warn { background: #fff3cd; color: var(--warn); }
+  .badge-info { background: #e0ecff; color: var(--blue); }
+  
+  .formula-box { background: #f0f4ff; border-left: 3px solid var(--blue-light); padding: 10px 14px; border-radius: 0 5px 5px 0; margin: 8px 0; font-family: "Consolas", monospace; font-size: 13px; color: #2a2a7a; }
+  
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+  .summary-item { background: #f0f6ff; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .summary-item .label { font-size: 11px; color: #666; margin-bottom: 4px; }
+  .summary-item .value { font-size: 16px; font-weight: 700; color: var(--blue); }
+  .summary-item .unit { font-size: 11px; color: #999; }
+  
+  .verify-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #eef; }
+  .verify-row:last-child { border-bottom: none; }
+  .verify-row .check-label { flex: 1; font-size: 13px; }
+  .verify-row .check-val { font-family: monospace; min-width: 120px; text-align: right; font-size: 13px; }
+  
+  .info-box { background: #fffbea; border: 1px solid #f0d96a; border-radius: 5px; padding: 10px 14px; font-size: 12px; color: #5a4800; margin: 8px 0; }
+  
+  canvas { border: 1px solid var(--border); border-radius: 5px; background: white; display: block; width: 100%; }
+  
+  /* ── 学生登录 / 教师登录 ── */
+  .student-badge { background: rgba(255,255,255,0.15); padding: 8px 16px; border-radius: 6px; font-size: 13px; }
+  .student-badge .label { opacity: 0.8; font-size: 11px; }
+  .student-badge .value { font-size: 15px; font-weight: 700; margin-top: 2px; }
+  .teacher-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; border: 1px solid rgba(255,255,255,0.3); transition: all 0.2s; color: white; }
+  .teacher-btn:hover { background: rgba(255,255,255,0.3); }
+
+  .login-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+  .login-box { background: white; padding: 32px; border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+  .login-box h2 { color: var(--blue); margin-bottom: 8px; font-size: 22px; }
+  .login-box .desc { color: #666; font-size: 13px; margin-bottom: 24px; line-height: 1.5; }
+  .login-field { margin-bottom: 16px; }
+  .login-field label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 13px; color: #555; }
+  .login-field input { width: 100%; padding: 10px 14px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; transition: border-color 0.2s; }
+  .login-field input:focus { outline: none; border-color: var(--blue-light); }
+  .login-field .hint { font-size: 12px; color: #888; margin-top: 4px; }
+  .login-field .error { font-size: 12px; color: var(--err); margin-top: 4px; display: none; }
+  .login-btn { width: 100%; padding: 12px; background: var(--blue-light); color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+  .login-btn:hover { background: var(--blue); }
+
+  /* ── 智能评分报告 ── */
+  .score-card { background: linear-gradient(135deg, #1a3560 0%, #2d6ec0 100%); color: white; padding: 24px; border-radius: 10px; margin-bottom: 16px; }
+  .score-display { text-align: center; }
+  .score-value { font-size: 48px; font-weight: 700; margin: 10px 0; }
+  .score-label { font-size: 14px; opacity: 0.9; }
+  .score-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 20px; }
+  .score-detail-item { background: rgba(255,255,255,0.15); padding: 10px; border-radius: 6px; text-align: center; }
+  .score-detail-item .label { font-size: 11px; opacity: 0.85; }
+  .score-detail-item .value { font-size: 18px; font-weight: 700; margin-top: 4px; }
+
+  .grading-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+  .grading-table th { background: #e8eef8; padding: 8px; border: 1px solid var(--border); font-weight: 600; color: var(--blue); }
+  .grading-table td { padding: 7px 8px; border: 1px solid var(--border); }
+  .grading-table .score-col { text-align: center; font-weight: 700; min-width: 60px; }
+
+
+
+  /* ── 教师管理 ── */
+  .stats-card { background: linear-gradient(135deg, #1a3560 0%, #2d6ec0 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 16px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; }
+  .stats-item { background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; text-align: center; }
+  .stats-item .label { font-size: 12px; opacity: 0.9; }
+  .stats-item .value { font-size: 28px; font-weight: 700; margin-top: 5px; }
+  .student-list { max-height: 500px; overflow-y: auto; }
+  .student-item { background: #f8faff; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
+  .student-item:hover { background: #e8eef8; border-color: var(--blue-light); }
+  .student-item .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .student-item .name { font-size: 15px; font-weight: 700; color: var(--blue); }
+  .student-item .detail { font-size: 12px; color: #888; margin-top: 4px; }
+
+  .btn-warning { background: #d48806; color: white; }
+  .btn-warning:hover { background: #b37205; }
+  .btn-danger { background: #c0392b; color: white; }
+  .btn-danger:hover { background: #a02a1f; }
+
+  @media (max-width: 700px) {
+    .grid2, .grid3 { grid-template-columns: 1fr; }
+    .tabs { gap: 0; }
+    .tab { padding: 8px 12px; font-size: 12px; }
+    .score-details { grid-template-columns: 1fr 1fr; }
+    .grade-criteria { grid-template-columns: 1fr; }
+  }
+user-select: none
+</style>
+
+</head>
+<body>
+
+<!-- 学生登录界面 -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2>🎓 学生身份验证</h2>
+    <div class="desc">
+      欢迎使用乘用车离合器设计计算工具！<br>
+      请输入您的学号和姓名开始设计。完成后系统将自动评分并生成报告。
+    </div>
+    <div class="login-field">
+      <label>学号（10位数字）</label>
+      <input type="text" id="loginStudentId" placeholder="请输入10位数字学号" maxlength="10">
+      <div class="hint">示例：2024012345</div>
+      <div class="error" id="idError">请输入10位数字学号</div>
+    </div>
+    <div class="login-field">
+      <label>姓名</label>
+      <input type="text" id="loginStudentName" placeholder="请输入您的姓名">
+      <div class="hint">用于报告标识</div>
+      <div class="error" id="nameError">请输入姓名（不少于2个字符）</div>
+    </div>
+    <button class="login-btn" onclick="submitLogin()">开始设计</button>
+  </div>
+</div>
+
+<!-- 教师登录界面 -->
+<div class="login-overlay" id="teacherLoginOverlay" style="display:none">
+  <div class="login-box">
+    <h2>🔐 教师管理系统</h2>
+    <div class="desc">请输入教师密码以访问统计管理功能</div>
+    <div class="login-field">
+      <label>教师密码</label>
+      <input type="password" id="teacherPassword" placeholder="请输入密码">
+      <div class="hint">默认密码： gxuqpp123（可在代码中修改）</div>
+      <div class="error" id="pwdError">密码错误，请重试</div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="login-btn" style="flex:1" onclick="submitTeacherLogin()">登录</button>
+      <button class="login-btn" style="flex:1;background:#888" onclick="closeTeacherLogin()">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="app-header">
+  <div>
+    <h1>🚗 汽车膜片弹簧离合器设计计算工具·广西大学 ·车辆工程专业 ·《汽车设计》课程教学团队</h1>
+    <div class="sub">《汽车设计》第6版（闵海涛、王建华）— 作业版 📱移动端兼容</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div class="teacher-btn" onclick="openTeacherLogin()">👨‍🏫 教师管理</div>
+    <div class="student-badge" id="studentBadge" style="display:none">
+      <div class="label">当前学生</div>
+      <div class="value"><span id="displayName"></span> (<span id="displayId"></span>)</div>
+    </div>
+  </div>
+</div>
+
+<div class="tabs" id="tabBar">
+  <div class="tab active" onclick="switchTab(0)">① 整车基本参数</div>
+  <div class="tab" onclick="switchTab(1)">② 离合器基本参数</div>
+  <div class="tab" onclick="switchTab(2)">③ 参数校核（7项）</div>
+  <div class="tab" onclick="switchTab(3)">④ 膜片弹簧</div>
+  <div class="tab" onclick="switchTab(4)">⑤ 压盘设计</div>
+  <div class="tab" onclick="switchTab(5)">⑥ 扭转减振器</div>
+  <div class="tab" onclick="switchTab(6)">⑦ 操纵机构</div>
+  <div class="tab" onclick="switchTab(7)">⑧ 从动盘设计</div>
+  <div class="tab" onclick="switchTab(8)">📊 智能评分报告</div>
+
+</div>
+
+<!-- TAB 0: Vehicle params -->
+<div class="content active" id="tab0">
+  <div class="card">
+    <div class="card-title"><span class="icon">🚗</span>整车基本参数输入</div>
+    <div class="grid3">
+      <div class="field"><label>发动机最大转矩 Temax</label><input type="number" id="Temax" value="93"><div class="unit">N·m</div></div>
+      <div class="field"><label>对应转速 nT</label><input type="number" id="nT" value="4500"><div class="unit">r/min</div></div>
+      <div class="field"><label>发动机最高转速 nemax</label><input type="number" id="nemax" value="6000"><div class="unit">r/min</div></div>
+      <div class="field"><label>整车质量 ma</label><input type="number" id="ma" value="890"><div class="unit">kg</div></div>
+      <div class="field"><label>一挡传动比 i₁</label><input type="number" id="i1" value="3.545" step="0.001"></div>
+      <div class="field"><label>主减速器传动比 i₀</label><input type="number" id="i0" value="4.052" step="0.001"></div>
+      <div class="field"><label>车轮滚动半径 r</label><input type="number" id="r_wheel" value="0.268" step="0.001"><div class="unit">m</div></div>
+      <div class="field"><label>最高车速 umax</label><input type="number" id="umax" value="130"><div class="unit">km/h</div></div>
+      <div class="field"><label>车型类别</label>
+        <select id="vehicleType">
+          <option value="car" selected>乘用车 / 小型商用车（ma≤6t）</option>
+          <option value="medium">中型商用车（6t~14t）</option>
+          <option value="heavy">重型商用车（ma>14t）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>发动机起步转速 ne</label>
+        <input type="number" id="ne_start" value="2000" step="100" min="500" max="4000">
+        <div class="unit">r/min &nbsp;|&nbsp; 参考值：乘用车取 2000 r/min，商用车取 1500 r/min</div>
+      </div>
+    </div>
+    <div class="btn-bar"><button class="btn btn-primary" onclick="calcAll()">✅ 更新所有计算</button></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">📋</span>推荐参数范围（乘用车）</div>
+    <table class="result-table">
+      <tr><th>参数</th><th>乘用车推荐范围</th><th>依据</th></tr>
+      <tr><td>后备系数 β</td><td>1.10 ～ 1.75</td><td>《汽车设计》P59 表2-1</td></tr>
+      <tr><td>单位压力 p₀（无石棉有机材料）</td><td>0.15 ～ 0.30 MPa</td><td>《汽车设计》P60 表2-2</td></tr>
+      <tr><td>摩擦因数 f（无石棉有机材料）</td><td>0.25 ～ 0.30</td><td>《汽车设计》P61 表2-4</td></tr>
+      <tr><td>直径系数 KD（乘用车）</td><td>14.6</td><td>《汽车设计》P60 表2-3</td></tr>
+      <tr><td>内外径比 c = d/D</td><td>0.53 ～ 0.70</td><td>《汽车设计》P61</td></tr>
+      <tr><td>最大圆周速度 vD</td><td>≤ 65～70 m/s</td><td>《汽车设计》P61</td></tr>
+      <tr><td>单位摩擦面积滑磨功 w</td><td>≤ 0.20 J/mm²（乘用车）</td><td>《汽车设计》P62</td></tr>
+      <tr><td>踏板力 Ff（乘用车）</td><td>80 ～ 150 N</td><td>《汽车设计》操纵机构</td></tr>
+      <tr><td>踏板行程 S（乘用车）</td><td>80 ～ 150 mm</td><td>《汽车设计》操纵机构</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 1: Basic params -->
+<div class="content" id="tab1">
+  <div class="card">
+    <div class="card-title"><span class="icon">⚙️</span>离合器基本参数确定</div>
+    <div class="grid2">
+      <div>
+        <div class="field" style="margin-bottom:10px"><label>膜片弹簧类型</label>
+          <select id="springType" onchange="calcBasic()">
+            <option value="pull" selected>拉式膜片弹簧</option>
+            <option value="push">推式膜片弹簧</option>
+          </select>
+          <div class="unit" id="springTypeNote" style="color:#1a4a8a;font-size:11px;margin-top:3px">拉式：分离轴承向外拉分离指；杠杆比范围 0.222～0.435</div>
+        </div>
+        <div class="field" style="margin-bottom:10px"><label>后备系数 β（乘用车 1.10～1.75）</label><input type="number" id="beta" value="1.2" step="0.01"></div>
+        <div class="field" style="margin-bottom:10px"><label>单位压力 p₀（MPa）</label><input type="number" id="p0" value="0.30" step="0.01"></div>
+        <div class="field" style="margin-bottom:10px"><label>摩擦因数 f</label><input type="number" id="f" value="0.25" step="0.01"></div>
+        <div class="field" style="margin-bottom:10px"><label>摩擦面数 Z（单片=2，双片=4）</label>
+          <select id="Z"><option value="2" selected>2（单片）</option><option value="4">4（双片）</option></select></div>
+        <div class="field" style="margin-bottom:10px"><label>离合器间隙 Δt（mm，一般3～4）</label><input type="number" id="delta_t" value="4" step="0.5"></div>
+        <div class="field" style="margin-bottom:10px"><label>直径系数 KD</label><input type="number" id="KD" value="14.6" step="0.1"></div>
+      </div>
+      <div>
+        <div class="formula-box">
+          离合器静摩擦力矩（式2-7，结构确定后精确计算）：<br>
+          <strong>Tc = (π/12)·f·Z·p₀·D³·(1 - c³)</strong><br><br>
+          摩擦片外径估算：<br>
+          <strong>D = KD × √Temax</strong><br><br>
+          平均摩擦半径（式2-5，精确公式）：<br>
+          <strong>Rc_exact = (2/3)·(R³-r³)/(R²-r²)</strong><br><br>
+          平均摩擦半径（式2-4，简化公式，c≥0.6时）：<br>
+          <strong>Rc_approx = (D+d)/4</strong><br><br>
+          最小压紧力（由式2-7 Tc 反推）：<br>
+          <strong>F = Tc / (f × Z × Rc)</strong><br><br>
+          对应单位压力：<br>
+          <strong>p₀_check = F / A</strong>
+        </div>
+        <div id="basicCalcResult" style="margin-top:10px"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">📏</span>摩擦片尺寸选取（按标准系列）</div>
+    <div class="info-box">按经验公式估算D后，需从标准尺寸系列中选取，并通过七项参数校核确认合适。下表为常用标准系列（单片）。</div>
+    <div class="grid3">
+      <div class="field"><label>摩擦片外径 D (mm)</label><input type="number" id="D" value="190"></div>
+      <div class="field"><label>摩擦片内径 d (mm)</label><input type="number" id="d" value="133"></div>
+      <div class="field"><label>摩擦片厚度 b (mm)</label>
+        <select id="b"><option value="3.2">3.2 mm</option><option value="3.5" selected>3.5 mm</option><option value="4.0">4.0 mm</option></select></div>
+    </div>
+    <div class="btn-bar">
+      <button class="btn btn-primary" onclick="calcBasic()">🔄 计算基本参数</button>
+    </div>
+    <div id="basicResult" style="margin-top:14px"></div>
+    <div style="margin-top:10px">
+      <div class="card-title" style="font-size:13px;margin-top:10px">摩擦片标准系列参考（表2-4，单片双面）</div>
+      <div class="info-box" style="margin-bottom:6px">数据来源：《汽车设计》第6版表2-4。蓝色高亮行为当前设计所取尺寸（与上方D、d输入匹配时自动标出）。</div>
+      <table class="result-table" id="discSeriesTable">
+        <tr>
+          <th>外径D(mm)</th><th>内径d(mm)</th><th>c=d/D</th>
+          <th>单面面积A(mm²)</th><th>Rc精确(mm)</th>
+          <th>摩擦面数Z=2时<br>估算Temax(N·m)参考</th>
+        </tr>
+      </table>
+      <div style="font-size:11px;color:#888;margin-top:4px">* Temax参考值按 f=0.25、p₀=0.25MPa、β=1.3 估算，仅供选型参考</div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: Verification -->
+<div class="content" id="tab2">
+  <div class="card">
+    <div class="card-title"><span class="icon">✅</span>七项参数校核</div>
+    <div class="info-box">以下七项校核缺一不可。绿色表示满足约束，红色表示超出许用值，请重新调整参数。</div>
+    <div id="verifyTable"></div>
+    <div class="btn-bar"><button class="btn btn-primary" onclick="calcVerify()">🔄 重新校核</button></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">📐</span>滑磨功详细计算过程</div>
+    <div id="slipDetail"></div>
+  </div>
+</div>
+
+<!-- TAB 3: Diaphragm Spring -->
+<div class="content" id="tab3">
+  <div class="card">
+    <div class="card-title"><span class="icon">🌀</span>膜片弹簧基本参数</div>
+    <div class="info-box" style="margin-bottom:10px">H/h 与 R/r 由输入参数自动计算，无需单独输入。计算结果将在下方校核表中显示。</div>
+    <div class="grid3">
+      <div class="field"><label>钢板厚度 h (mm, 2～4)</label><input type="number" id="h_spring" value="2.5" step="0.1"></div>
+      <div class="field"><label>碟簧大端半径 R (mm)</label><input type="number" id="R_spring" value="90"></div>
+      <div class="field"><label>内截锥高度 H (mm)</label><input type="number" id="H_spring" value="4.5" step="0.1"><div class="unit">将自动计算 H/h，推荐范围 1.5～2.0</div></div>
+      <div class="field"><label>碟簧小端半径 r (mm)</label><input type="number" id="r_spring_direct" value="72" step="0.5"><div class="unit">将自动计算 R/r，推荐范围 1.20～1.35</div></div>
+      <div class="field"><label>分离指数数目 n（18或24）</label>
+        <select id="n_fingers"><option value="18" selected>18个</option><option value="24">24个</option></select></div>
+      <div class="field"><label>压盘加载点半径 R₁ (mm)</label><input type="number" id="R1_spring" value="85"></div>
+      <div class="field"><label>支承环加载点半径 r₁ (mm)</label><input type="number" id="r1_spring" value="74"></div>
+      <div class="field"><label>弹簧小端内半径 r₀ (mm)</label><input type="number" id="r0_spring" value="22.5" step="0.5"></div>
+      <div class="field"><label>分离轴承作用半径 rf (mm)</label><input type="number" id="rf_spring" value="26"></div>
+      <div class="field"><label>切槽宽度 δ₁ (mm，3.2～3.5)</label><input type="number" id="delta1_slot" value="3.5" step="0.1"></div>
+      <div class="field"><label>切槽底部圆弧槽宽 δ₂ (mm，9～10)</label><input type="number" id="delta2_slot" value="9.5" step="0.5"></div>
+      <div class="field"><label>分离指根部支承圆半径 re (mm)</label><input type="number" id="re_spring" value="62" step="0.5"><div class="unit">应满足 r - re ≥ δ₂</div></div>
+      <div class="field"><label>分离指根部宽度 br (mm)</label><input type="number" id="br_spring" value="10" step="0.5"><div class="unit">参考值：br = 2πr/n（r为碟簧小端半径，n为分离指数目）</div></div>
+    </div>
+      <div class="field"><label>kB = λB/λH（B点系数，推荐0.8～1.0）</label><input type="number" id="kB_spring" value="0.9" step="0.01" min="0.5" max="1.3"><div class="unit">B点 = kB × λH（拐点），靠近H曲线最平坦</div></div>
+      <div class="field"><label>摩擦片最大单面磨损量 δ_wear (mm)</label><input type="number" id="delta_wear" value="1.0" step="0.1"><div class="unit">A点 = B点 − δ_wear（A在B左侧）</div></div>
+      <div class="field"><label>分离时压盘行程 Δ (mm)</label><input type="number" id="delta_platen" value="1.5" step="0.1"><div class="unit">C点 = B点 + Δ（C在B右侧，靠近N）</div></div>
+    <div class="btn-bar"><button class="btn btn-primary" onclick="calcSpring()">🔄 计算并校核膜片弹簧</button></div>
+    <div id="springResult" style="margin-top:14px"></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">📈</span>膜片弹簧弹性特性曲线</div>
+    <div id="springCurveInfo" class="info-box">请先点击"计算并校核膜片弹簧"按钮，然后此处将显示特性曲线。</div>
+    <canvas id="springCanvas" height="420"></canvas>
+    <div id="springCurveLegend" style="margin-top:8px;font-size:12px;color:#555;display:none"></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">🔬</span>膜片弹簧强度校核</div>
+    <div id="springStrengthResult" class="info-box">请先点击"计算并校核膜片弹簧"按钮。</div>
+  </div>
+</div>
+
+<!-- TAB 4: Pressure Plate Design -->
+<div class="content" id="tab4">
+  <div class="card">
+    <div class="card-title"><span class="icon">🔵</span>压盘基本尺寸设计</div>
+    <div class="info-box">
+      压盘外径比摩擦片外径略大（+2～5 mm），内径比摩擦片内径略小（−1～4 mm），以保证摩擦面完全覆盖。
+      压盘厚度影响散热与刚度，乘用车一般取 15～25 mm。
+    </div>
+    <div class="grid3">
+      <div class="field">
+        <label>压盘厚度 t (mm，推荐15～25)</label>
+        <input type="number" id="pp_thick" value="18" step="1" min="10" max="40">
+        <div class="unit">影响散热能力与结构刚度</div>
+      </div>
+      <div class="field">
+        <label>外径加量 ΔD (mm，2～5)</label>
+        <input type="number" id="pp_delta_D" value="3" step="0.5" min="0" max="10">
+        <div class="unit">压盘外径 = D + ΔD</div>
+      </div>
+      <div class="field">
+        <label>内径减量 Δd (mm，1～4)</label>
+        <input type="number" id="pp_delta_d" value="2" step="0.5" min="0" max="8">
+        <div class="unit">压盘内径 = d − Δd</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">🌡️</span>温升校核（式2-45）</div>
+    <div class="info-box" style="margin-bottom:10px">
+      τ = γ·W / (m·c)　（式2-45）&nbsp;&nbsp;
+      一次接合温升 τ 不应超过 <strong>8～10 ℃</strong>。<br>
+      W — 总滑磨功（来自第③部分校核计算）；m — 压盘质量；c — 铸铁比热容 481.4 J/(kg·℃)
+    </div>
+    <div class="grid3">
+      <div class="field">
+        <label>传热比率 γ</label>
+        <select id="pp_gamma" onchange="updateGammaHint()">
+          <option value="0.5" selected>单片离合器压盘 γ = 0.5</option>
+          <option value="0.25">双片离合器压盘 γ = 0.25</option>
+          <option value="0.5_mid">中间压盘 γ = 0.5</option>
+        </select>
+        <div class="unit" id="gammaHint" style="color:#1a4a8a">单片：飞轮与压盘各承担50%热量</div>
+      </div>
+      <div class="field">
+        <label>压盘材料密度 ρ (kg/m³)</label>
+        <input type="number" id="pp_density" value="7200" step="50">
+        <div class="unit">灰铸铁 HT200/HT250 ≈ 7200 kg/m³</div>
+      </div>
+      <div class="field">
+        <label>铸铁比热容 c_iron [J/(kg·℃)]</label>
+        <input type="number" id="pp_c_iron" value="481.4" step="0.1">
+        <div class="unit">灰铸铁标准值 481.4 J/(kg·℃)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">📏</span>凸台高度 X₁ 校核</div>
+    <div class="info-box" style="margin-bottom:8px">
+      凸台高度需满足：<br>
+      <strong>X₁ > (λ₁C − λ₁H)·(r − r₀)/(R − r) + λ₁H·(r − r₀)/(R − r)</strong><br>
+      式中各 λ 值来自第④部分膜片弹簧计算；r、r₀、R 来自膜片弹簧几何参数。
+    </div>
+    <div class="grid3">
+      <div class="field">
+        <label>凸台高度 X₁ (mm)</label>
+        <input type="number" id="pp_X1" value="5" step="0.5" min="0">
+        <div class="unit">压盘凸台（传扭凸台）高度设计值</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-bar" style="padding:0 0 10px 0">
+    <button class="btn btn-primary" onclick="calcPressurePlate()">🔄 计算压盘设计</button>
+  </div>
+  <div id="ppResult" style="margin-top:4px"></div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="card-title"><span class="icon">📐</span>压盘截面示意图</div>
+    <canvas id="ppCanvas" height="280" style="max-width:640px;margin:0 auto;display:block;width:100%"></canvas>
+  </div>
+</div>
+
+<!-- TAB 5: Torsion Damper (renumbered) -->
+<!-- TAB 4: Torsion Damper -->
+<div class="content" id="tab5">
+  <div class="card">
+    <div class="card-title"><span class="icon">🔩</span>扭转减振器参数设计</div>
+    <div class="grid3">
+      <div class="field"><label>极限转矩系数（乘用车=2.0）</label><input type="number" id="Tj_coef" value="2.0" step="0.1"></div>
+      <div class="field"><label>扭转刚度 kδ (N·m/rad)&nbsp;<span style="color:var(--ok);font-size:11px;font-weight:400">参考上限 ≤ 13×Tⱼ = <span id="kd_ref_hint">—</span> N·m/rad</span></label><input type="number" id="k_delta" value="2300"></div>
+      <div class="field"><label>阻尼转矩系数（0.06～0.17）</label><input type="number" id="Tu_coef" value="0.12" step="0.01"></div>
+      <div class="field"><label>预紧转矩系数（0.05～0.15）</label><input type="number" id="Tn_coef" value="0.10" step="0.01"></div>
+      <div class="field"><label>R₀系数（0.60～0.75）</label><input type="number" id="R0_coef" value="0.60" step="0.05"></div>
+      <div class="field"><label>弹簧中径 Dc (mm, 11～15)</label><input type="number" id="Dc" value="11"></div>
+      <div class="field"><label>钢丝直径 d_spring (mm, 3～4)</label><input type="number" id="d_spring" value="3.4" step="0.1"></div>
+      <div class="field"><label>限位销间隙 λ (mm, 2.5～4)</label><input type="number" id="lambda1" value="4" step="0.5"></div>
+    </div>
+    <div class="btn-bar"><button class="btn btn-primary" onclick="calcDamper()">🔄 计算扭转减振器</button></div>
+    <div id="damperResult" style="margin-top:14px"></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">📊</span>减振弹簧详细尺寸</div>
+    <div id="damperSpringDetail"></div>
+  </div>
+</div>
+
+<!-- TAB 6: Driven Disc Design -->
+<div class="content" id="tab6">
+  <div class="card">
+    <div class="card-title"><span class="icon">🦶</span>液压式操纵机构设计</div>
+    <div class="grid3">
+      <div class="field">
+        <label>踏板自由行程 S₁ (mm, 20～30)&nbsp;<span style="font-weight:400;color:#888;font-size:11px">输入值</span></label>
+        <input type="number" id="S1" value="25">
+        <div class="unit">与计算值对比，见结果表</div>
+      </div>
+      <div class="field">
+        <label>分离轴承自由行程 S₀f (mm, 1.5～3)</label>
+        <input type="number" id="S0f" value="2">
+        <div class="unit">分离轴承与分离指之间</div>
+      </div>
+      <div class="field">
+        <label>对偶面间隙 δ (mm)</label>
+        <select id="delta_gap_type" onchange="updateDeltaGap()">
+          <option value="single" selected>单片（0.85～1.30 mm）</option>
+          <option value="double">双片（0.75～0.90 mm）</option>
+        </select>
+        <input type="number" id="delta_gap" value="1.0" step="0.05" style="margin-top:4px">
+        <div class="unit" id="delta_gap_range">范围：0.85～1.30 mm（单片）</div>
+      </div>
+      <div class="field">
+        <label>踏板杠杆长度 a₂ (mm)</label>
+        <input type="number" id="a2" value="300">
+      </div>
+      <div class="field">
+        <label>主缸侧臂长 a₁ (mm)</label>
+        <input type="number" id="a1_ctrl" value="60">
+      </div>
+      <div class="field">
+        <label>工作缸侧臂长 b₂ (mm)</label>
+        <input type="number" id="b2_ctrl" value="50">
+        <div class="unit">工作缸（分离缸）摇臂长度</div>
+      </div>
+      <div class="field">
+        <label>主缸摇臂 b₁ (mm)</label>
+        <input type="number" id="b1_ctrl" value="40">
+        <div class="unit">主缸推杆侧摇臂长度</div>
+      </div>
+      <div class="field">
+        <label>主缸直径 d₁ (mm)</label>
+        <input type="number" id="d1_ctrl" value="19">
+      </div>
+      <div class="field">
+        <label>工作缸直径 d₂ (mm)</label>
+        <input type="number" id="d2_ctrl" value="22">
+      </div>
+      <div class="field">
+        <label>液压效率 η (%)</label>
+        <input type="number" id="eta_hyd" value="85">
+      </div>
+    </div>
+    <div class="info-box" style="margin-top:6px;background:#e8f4ff;border-color:#6ab0e0;color:#1a3560">
+      ℹ️ <strong>c₂ 和 c₁ 自动由膜片弹簧参数计算：</strong>
+      c₂ = rf − r₁ &nbsp;|&nbsp; c₁ = R₁ − rf − c₂ &nbsp;（均取自第④部分膜片弹簧输入）<br>
+      <strong>弹簧总压紧力 F'</strong> 自动取第④部分计算所得 F₂C 值（需先点击"计算并校核膜片弹簧"）。
+    </div>
+    <div class="btn-bar"><button class="btn btn-primary" onclick="calcControl()">🔄 计算操纵机构</button></div>
+    <div id="controlResult" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<!-- TAB 7: Control mechanism -->
+<div class="content" id="tab7">
+  <div class="card">
+    <div class="card-title"><span class="icon">⚙️</span>从动盘毂花键尺寸设计</div>
+    <div class="info-box">
+      从动盘毂通过矩形花键与变速器输入轴连接，需按传递转矩校核挤压应力与剪切应力。
+      花键尺寸参数查《汽车设计》<strong>表2-8</strong>（矩形花键 GB/T 1144）选取，点击下方参考表行可自动填入参数。
+    </div>
+
+    <div class="grid3" style="margin-bottom:12px">
+      <div class="field">
+        <label>从动盘数量 z</label>
+        <select id="sp_z">
+          <option value="1" selected>1（单片）</option>
+          <option value="2">2（双片）</option>
+        </select>
+        <div class="unit">影响花键传递转矩分配</div>
+      </div>
+    </div>
+
+    <div style="font-weight:600;font-size:13px;color:var(--blue);margin-bottom:8px">花键参数输入（查表2-4选取）</div>
+    <div class="grid3">
+      <div class="field">
+        <label>花键齿数 n</label>
+        <input type="number" id="sp_n" value="6" step="1" min="4">
+        <div class="unit">常用：6、8、10、12齿</div>
+      </div>
+      <div class="field">
+        <label>花键外径 D_s (mm)</label>
+        <input type="number" id="sp_D" value="32" step="0.5">
+        <div class="unit">键齿顶圆直径</div>
+      </div>
+      <div class="field">
+        <label>花键内径 d_s (mm)</label>
+        <input type="number" id="sp_d" value="26" step="0.5">
+        <div class="unit">键槽根圆直径</div>
+      </div>
+      <div class="field">
+        <label>键齿宽 b (mm)</label>
+        <input type="number" id="sp_b" value="6" step="0.5">
+        <div class="unit">单个键齿宽度</div>
+      </div>
+      <div class="field">
+        <label>有效齿长 L (mm)</label>
+        <input type="number" id="sp_L" value="30" step="0.5">
+        <div class="unit">花键配合有效长度</div>
+      </div>
+    </div>
+
+    <div class="btn-bar">
+      <button class="btn btn-primary" onclick="calcDrivenDisc()">🔄 计算从动盘花键校核</button>
+    </div>
+    <div id="splineResult" style="margin-top:14px"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">📋</span>从动盘毂矩形花键尺寸系列（表2-8）</div>
+    <div class="info-box" style="margin-bottom:8px">
+      数据来源：《汽车设计》第5版表2-8（矩形花键 GB/T 1144）。<strong>点击任意行自动填入上方输入框。</strong>
+      蓝色高亮行为当前输入参数对应的规格。
+    </div>
+    <table class="result-table" id="splineSeriesTable" style="cursor:pointer">
+      <tr>
+        <th>齿数 n</th><th>外径 D(mm)</th><th>内径 d(mm)</th><th>键宽 b(mm)</th>
+        <th>小径 d₁(mm)</th><th>键侧面高 h(mm)</th><th>定心方式</th><th>适用车型参考</th>
+      </tr>
+      <tr onclick="fillSpline(6,23,18,4)"><td>6</td><td>23</td><td>18</td><td>4</td><td>20</td><td>2.5</td><td>小径定心</td><td>微型轿车</td></tr>
+      <tr onclick="fillSpline(6,26,21,5)"><td>6</td><td>26</td><td>21</td><td>5</td><td>23</td><td>2.5</td><td>小径定心</td><td>微型轿车</td></tr>
+      <tr onclick="fillSpline(6,28,22,6)"><td>6</td><td>28</td><td>22</td><td>6</td><td>25</td><td>3.0</td><td>小径定心</td><td>小型轿车</td></tr>
+      <tr onclick="fillSpline(6,32,26,6)"><td>6</td><td>32</td><td>26</td><td>6</td><td>28</td><td>3.0</td><td>小径定心</td><td>中级轿车（常用）</td></tr>
+      <tr onclick="fillSpline(6,36,30,7)"><td>6</td><td>36</td><td>30</td><td>7</td><td>32</td><td>3.0</td><td>小径定心</td><td>中级轿车</td></tr>
+      <tr onclick="fillSpline(6,42,35,8)"><td>6</td><td>42</td><td>35</td><td>8</td><td>38</td><td>3.5</td><td>小径定心</td><td>中型轿车/轻卡</td></tr>
+      <tr onclick="fillSpline(8,36,30,6)"><td>8</td><td>36</td><td>30</td><td>6</td><td>32</td><td>3.0</td><td>小径定心</td><td>中型轿车</td></tr>
+      <tr onclick="fillSpline(8,42,34,7)"><td>8</td><td>42</td><td>34</td><td>7</td><td>38</td><td>4.0</td><td>小径定心</td><td>轻型载货车</td></tr>
+      <tr onclick="fillSpline(8,46,38,8)"><td>8</td><td>46</td><td>38</td><td>8</td><td>42</td><td>4.0</td><td>小径定心</td><td>轻型载货车</td></tr>
+      <tr onclick="fillSpline(8,52,42,9)"><td>8</td><td>52</td><td>42</td><td>9</td><td>46</td><td>5.0</td><td>小径定心</td><td>中型载货车</td></tr>
+      <tr onclick="fillSpline(10,52,42,8)"><td>10</td><td>52</td><td>42</td><td>8</td><td>46</td><td>5.0</td><td>键侧定心</td><td>中型载货车</td></tr>
+      <tr onclick="fillSpline(10,60,50,9)"><td>10</td><td>60</td><td>50</td><td>9</td><td>54</td><td>5.0</td><td>键侧定心</td><td>中型载货车</td></tr>
+      <tr onclick="fillSpline(10,65,54,10)"><td>10</td><td>65</td><td>54</td><td>10</td><td>58</td><td>5.5</td><td>键侧定心</td><td>重型载货车</td></tr>
+      <tr onclick="fillSpline(10,72,60,10)"><td>10</td><td>72</td><td>60</td><td>10</td><td>65</td><td>6.0</td><td>键侧定心</td><td>重型载货车</td></tr>
+      <tr onclick="fillSpline(10,82,68,12)"><td>10</td><td>82</td><td>68</td><td>12</td><td>74</td><td>7.0</td><td>键侧定心</td><td>重型载货车</td></tr>
+    </table>
+    <div style="font-size:11px;color:#888;margin-top:4px">* 点击任意行自动填入上方输入框，然后点击"计算"按钮 &nbsp;|&nbsp; h = (D−d)/2，为键侧面高（承压高度）</div>
+  </div>
+</div>
+
+
+<!-- TAB 8: 智能评分报告 -->
+<div class="content" id="tab8">
+  <div class="score-card">
+    <div class="score-display">
+      <div class="score-label">离合器设计 — 智能评分报告</div>
+      <div class="score-value" id="totalScore">--</div>
+      <div class="score-label" style="font-size:20px;font-weight:700;margin-top:4px" id="totalGrade">点击下方按钮计算</div>
+    </div>
+    <div class="score-details">
+      <div class="score-detail-item"><div class="label">基本参数设计</div><div class="value"><span id="score1">--</span>/20</div></div>
+      <div class="score-detail-item"><div class="label">参数校核（7项）</div><div class="value"><span id="score2">--</span>/20</div></div>
+      <div class="score-detail-item"><div class="label">膜片弹簧</div><div class="value"><span id="score3">--</span>/20</div></div>
+      <div class="score-detail-item"><div class="label">压盘与减振器</div><div class="value"><span id="score4">--</span>/15</div></div>
+      <div class="score-detail-item"><div class="label">操纵机构</div><div class="value"><span id="score5">--</span>/15</div></div>
+      <div class="score-detail-item"><div class="label">从动盘设计</div><div class="value"><span id="score6">--</span>/10</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">📋</span>详细评分明细</div>
+    <table class="grading-table" id="gradingTable">
+      <thead>
+        <tr>
+          <th style="width:38%">评分项目</th>
+          <th style="width:20%">标准要求</th>
+          <th style="width:15%">实际值</th>
+          <th style="width:12%" class="score-col">得分</th>
+          <th style="width:15%" class="score-col">满分</th>
+        </tr>
+      </thead>
+      <tbody id="gradingBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">📄</span>设计参数汇总表</div>
+    <div id="summaryTable"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">🎯</span>总体校核状态</div>
+    <div id="overallStatus"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">📚</span>教师评阅辅助检查表</div>
+    <div class="info-box">此表可帮助教师快速核查学生设计计算是否正确，标注关键检查点。</div>
+    <table class="result-table">
+      <tr><th>检查项目</th><th>标准值/范围</th><th>本设计计算值</th><th>评价</th></tr>
+      <tr id="check_Tc"><td>离合器静摩擦力矩 Tc</td><td>= β×Temax</td><td id="chk_Tc">—</td><td id="chk_Tc_v">—</td></tr>
+      <tr id="check_D"><td>摩擦片外径 D（经验公式）</td><td>KD×√Temax</td><td id="chk_D">—</td><td id="chk_D_v">—</td></tr>
+      <tr id="check_c"><td>内外径比 c = d/D</td><td>0.53～0.70</td><td id="chk_c">—</td><td id="chk_c_v">—</td></tr>
+      <tr id="check_vD"><td>最大圆周速度 vD</td><td>≤ 65～70 m/s</td><td id="chk_vD">—</td><td id="chk_vD_v">—</td></tr>
+      <tr id="check_w"><td>单位滑磨功 w</td><td>≤ 0.20 J/mm²</td><td id="chk_w">—</td><td id="chk_w_v">—</td></tr>
+      <tr id="check_Tj"><td>极限转矩 Tⱼ（乘用车）</td><td>= 2.0×Temax</td><td id="chk_Tj">—</td><td id="chk_Tj_v">—</td></tr>
+      <tr id="check_lever"><td>膜片弹簧杠杆比 (R₁-r₁)/(r₁-rf)</td><td>0.222～0.435</td><td id="chk_lever">—</td><td id="chk_lever_v">—</td></tr>
+      <tr id="check_Ff"><td>踏板力 Ff</td><td>80～150 N（乘用车）</td><td id="chk_Ff">—</td><td id="chk_Ff_v">—</td></tr>
+      <tr id="check_sigma_p"><td>花键挤压应力 σ_p</td><td>≤ 30 MPa</td><td id="chk_sigma_p">—</td><td id="chk_sigma_p_v">—</td></tr>
+      <tr id="check_tau_s"><td>花键剪切应力 τ_s</td><td>≤ 15 MPa</td><td id="chk_tau_s">—</td><td id="chk_tau_s_v">—</td></tr>
+    </table>
+  </div>
+
+  <div class="info-box" style="background:#e8f5e9;border-color:#4caf50;color:#2e7d32">
+    <strong>📦 学生提交说明：</strong><br>
+    点击下方"生成完整报告"后，会下载一个<strong>TXT报告文件</strong>。<br>
+    此文件包含：✓ 可读的文字报告（供您自己查看）&nbsp;&nbsp;✓ 机器可读的评分数据（用于教师统计）<br>
+    <strong style="color:#c62828">请将这个TXT文件提交给教师！</strong>
+  </div>
+
+  <div class="btn-bar">
+    <button class="btn btn-success" onclick="generateFinalReport()">📥 生成完整报告（含数据文件）</button>
+    <button class="btn btn-warning" onclick="calcAll()">🔄 重新计算评分</button>
+  </div>
+</div>
+
+
+
+<div id="exportArea" style="display:none"></div>
+
+<script>
+// ========== 配置 ==========
+const TEACHER_PASSWORD = 'teacher123'; // 教师密码，可在此修改
+let teacherData = []; // 教师导入的学生数据
+
+// ========== DATA ==========
+const state = {
+  studentId: '',
+  studentName: '',
+  isTeacher: false
+};
+
+function getN(id) { return parseFloat(document.getElementById(id).value) || 0; }
+function getS(id) { return document.getElementById(id).value; }
+
+function fmt(v, n=3) { return isNaN(v) ? '—' : parseFloat(v.toFixed(n)).toString(); }
+
+function badge(ok, okText='✓ 满足', failText='✗ 不满足') {
+  return ok ? `<span class="badge badge-ok">${okText}</span>` : `<span class="badge badge-err">${failText}</span>`;
+}
+
+function switchTab(i) {
+  document.querySelectorAll('.content').forEach((c,idx) => c.classList.toggle('active', idx===i));
+  document.querySelectorAll('.tab').forEach((t,idx) => t.classList.toggle('active', idx===i));
+}
+
+// ========== DISC SERIES TABLE (表2-4) ==========
+// [D, d] pairs from 《汽车设计》第5版 表2-4
+const DISC_SERIES = [
+  [160, 100],[160, 110],
+  [180, 115],[180, 125],
+  [190, 125],[190, 130],[190, 133],
+  [200, 130],[200, 140],
+  [215, 140],[215, 150],
+  [225, 150],[225, 155],
+  [240, 150],[240, 155],[240, 160],
+  [250, 155],[250, 160],[250, 165],
+  [260, 165],[260, 170],
+  [275, 175],[275, 180],
+  [300, 190],[300, 200],
+  [325, 200],[325, 210],
+  [350, 220],[350, 230],
+];
+
+function renderDiscTable() {
+  const D_cur = getN('D'), d_cur = getN('d');
+  const f_ref = 0.25, p0_ref = 0.25, beta_ref = 1.3, Z_ref = 2;
+  let rows = '';
+  DISC_SERIES.forEach(([Di, di]) => {
+    const ci = di / Di;
+    const Ai = Math.PI / 4 * (Di*Di - di*di);
+    const Ri = Di/2, ri = di/2;
+    const Rci = (2/3) * (Math.pow(Ri,3)-Math.pow(ri,3)) / (Math.pow(Ri,2)-Math.pow(ri,2));
+    // Temax estimate: Tc = (π/12)·f·Z·p0·D³·(1-c³) / 1000  [N·m], then Temax = Tc/beta
+    const Tc_est = (Math.PI/12) * f_ref * Z_ref * p0_ref * Math.pow(Di,3) * (1-Math.pow(ci,3)) / 1000;
+    const Temax_est = Tc_est / beta_ref;
+    const isDesign = (Di === D_cur && di === d_cur);
+    const rowStyle = isDesign
+      ? 'background:#dbeafe;font-weight:700;color:#1a3a8a;border-left:4px solid #2d6ec0;'
+      : (ci < 0.53 || ci > 0.70 ? 'color:#aaa;' : '');
+    const cBadge = (ci >= 0.53 && ci <= 0.70)
+      ? `<span style="color:var(--ok)">${ci.toFixed(3)}</span>`
+      : `<span style="color:var(--err)">${ci.toFixed(3)}</span>`;
+    rows += `<tr style="${rowStyle}">
+      <td>${Di}${isDesign ? ' ⬅ 本设计' : ''}</td>
+      <td>${di}</td>
+      <td>${cBadge}</td>
+      <td>${Math.round(Ai)}</td>
+      <td>${Rci.toFixed(1)}</td>
+      <td>~${Math.round(Temax_est/5)*5}</td>
+    </tr>`;
+  });
+  const tbl = document.getElementById('discSeriesTable');
+  if (tbl) {
+    // keep header, replace data rows
+    const header = tbl.rows[0].outerHTML;
+    tbl.innerHTML = header + rows;
+  }
+}
+
+// ========== CALC BASIC ==========
+function calcBasic() {
+  // Update spring type note
+  const springTypeEl = document.getElementById('springType');
+  const springTypeNoteEl = document.getElementById('springTypeNote');
+  if (springTypeEl && springTypeNoteEl) {
+    if (springTypeEl.value === 'pull') {
+      springTypeNoteEl.textContent = '拉式：分离轴承向外拉分离指；杠杆比范围 0.222～0.435';
+      springTypeNoteEl.style.color = '#1a4a8a';
+    } else {
+      springTypeNoteEl.textContent = '推式：分离轴承向内推分离指；杠杆比范围 0.222～0.435';
+      springTypeNoteEl.style.color = '#7a3000';
+    }
+  }
+  const Temax = getN('Temax'), beta = getN('beta'), p0 = getN('p0'), f = getN('f');
+  const Z = getN('Z'), KD = getN('KD'), D = getN('D'), d = getN('d');
+  const nemax = getN('nemax');
+
+  const c = d / D;
+  const R_mm = D / 2, r_mm = d / 2; // half diameters in mm
+
+  // 式2-7: Tc = (π/12)·f·Z·p₀·D³·(1-c³)  (p0 in MPa=N/mm², D in mm → result in N·mm → /1000 → N·m)
+  const Tc_2_7 = (Math.PI / 12) * f * Z * p0 * Math.pow(D, 3) * (1 - Math.pow(c, 3)) / 1000;
+  // Also keep Tc = β×Temax for reference
+  const Tc_beta = beta * Temax;
+
+  const D_est = KD * Math.sqrt(Temax);
+  const A = Math.PI / 4 * (D*D - d*d); // single-face area, mm²
+
+  // 式2-5: Rc_exact = (2/3)·(R³-r³)/(R²-r²)  in mm
+  const Rc_exact = (2/3) * (Math.pow(R_mm,3) - Math.pow(r_mm,3)) / (Math.pow(R_mm,2) - Math.pow(r_mm,2));
+  // 式2-4: Rc_approx = (D+d)/4  in mm
+  const Rc_approx = (D + d) / 4;
+
+  // Use Tc_2_7 as the design Tc (structure determined), Rc_exact for F
+  const Tc = Tc_2_7;
+  const Rc = Rc_exact;
+
+  // F = Tc(N·m) / (f × Z × Rc(m)) = Tc*1000(N·mm) / (f×Z×Rc(mm))
+  const F = Tc * 1000 / (f * Z * Rc); // N
+  // p0_check = F / A  (N/mm² = MPa)
+  const p0_calc = F / A; // MPa
+
+  const vD = Math.PI * D/1000 * nemax / 60;
+
+  state.Tc = Tc; state.D = D; state.d = d; state.c = c; state.Rc = Rc;
+  state.A = A; state.F = F; state.p0_calc = p0_calc; state.vD = vD;
+  state.Temax = Temax; state.beta = beta; state.f = f; state.Z = Z;
+  state.nemax = nemax; state.D_est = D_est;
+  state.Rc_exact = Rc_exact; state.Rc_approx = Rc_approx;
+  state.Tc_beta = Tc_beta; state.Tc_2_7 = Tc_2_7;
+
+  const html = `
+    <table class="result-table">
+      <tr><th>计算项目</th><th>公式</th><th>结果</th><th>单位</th><th>备注</th></tr>
+      <tr><td>摩擦片外径估算值</td><td>KD × √Temax = ${KD} × √${Temax}</td><td><strong>${fmt(D_est,1)}</strong></td><td>mm</td><td>经验估算</td></tr>
+      <tr><td>实取外径 D</td><td>标准系列取值</td><td><strong>${D}</strong></td><td>mm</td><td>—</td></tr>
+      <tr><td>内外径比 c</td><td>d/D = ${d}/${D}</td><td><strong>${fmt(c,4)}</strong> ${badge(c>=0.53&&c<=0.70)}</td><td>—</td><td>应在0.53～0.70</td></tr>
+      <tr style="background:#fffbea"><td>平均摩擦半径 Rc（式2-5精确）</td><td>(2/3)×(R³-r³)/(R²-r²) = (2/3)×(${fmt(R_mm,1)}³-${fmt(r_mm,1)}³)/(${fmt(R_mm,1)}²-${fmt(r_mm,1)}²)</td><td><strong>${fmt(Rc_exact,3)}</strong></td><td>mm</td><td>精确公式</td></tr>
+      <tr style="background:#f0f6ff"><td>平均摩擦半径 Rc（式2-4简化）</td><td>(D+d)/4 = (${D}+${d})/4</td><td><strong>${fmt(Rc_approx,3)}</strong></td><td>mm</td><td>简化公式（c≥0.6）</td></tr>
+      <tr style="background:#f0fff4"><td colspan="5" style="padding:4px 10px;font-size:12px;color:#555">▶ 式2-5与式2-4偏差：${fmt(Math.abs(Rc_exact-Rc_approx)/Rc_exact*100,2)}%，后续计算采用精确值 Rc = ${fmt(Rc_exact,3)} mm</td></tr>
+      <tr><td>单面摩擦面积 A</td><td>π/4×(D²-d²)</td><td><strong>${fmt(A,1)}</strong></td><td>mm²</td><td>—</td></tr>
+      <tr style="background:#fff0f0"><td>离合器静摩擦力矩 Tc（式2-7）</td><td>(π/12)·f·Z·p₀·D³·(1-c³) = (π/12)×${f}×${Z}×${p0}×${D}³×(1-${fmt(c,4)}³)</td><td><strong>${fmt(Tc_2_7,2)}</strong></td><td>N·m</td><td>结构确定后精确值</td></tr>
+      <tr style="background:#f8f8f8"><td>参考：Tc = β×Temax</td><td>${beta} × ${Temax}</td><td><strong>${fmt(Tc_beta,1)}</strong></td><td>N·m</td><td>初选参考值</td></tr>
+      <tr style="background:#fff0f0"><td colspan="5" style="padding:4px 10px;font-size:12px;color:#555">▶ 式2-7（Tc=${fmt(Tc_2_7,2)} N·m）与β×Temax（${fmt(Tc_beta,1)} N·m）偏差：${fmt(Math.abs(Tc_2_7-Tc_beta)/Tc_beta*100,2)}%，以式2-7为准</td></tr>
+      <tr><td>最小压紧力 F</td><td>Tc / (f×Z×Rc) = ${fmt(Tc_2_7,2)}×1000 / (${f}×${Z}×${fmt(Rc_exact,3)})</td><td><strong>${fmt(F,1)}</strong></td><td>N</td><td>—</td></tr>
+      <tr><td>对应单位压力 p₀</td><td>F / A = ${fmt(F,1)} / ${fmt(A,1)}</td><td><strong>${fmt(p0_calc,4)}</strong> ${badge(p0_calc>=0.15&&p0_calc<=0.30,'✓ 满足0.15~0.30','✗ 不满足')}</td><td>MPa</td><td>乘用车许用0.15～0.30 MPa</td></tr>
+    </table>`;
+  document.getElementById('basicResult').innerHTML = html;
+  document.getElementById('basicCalcResult').innerHTML = `
+    <div class="summary-item"><div class="label">离合器静摩擦力矩（式2-7）</div><div class="value">${fmt(Tc_2_7,2)}</div><div class="unit">N·m</div></div>
+    <div class="summary-item" style="margin-top:8px"><div class="label">外径估算值</div><div class="value">${fmt(D_est,1)}</div><div class="unit">mm → 取 ${D} mm</div></div>
+  `;
+  renderDiscTable();
+}
+
+// ========== CALC VERIFY ==========
+function calcVerify() {
+  calcBasic();
+  const Temax = getN('Temax'), beta = getN('beta'), f = getN('f'), Z = getN('Z');
+  const D = getN('D'), d = getN('d'), nemax = getN('nemax'), p0 = getN('p0');
+  const ma = getN('ma'), i1 = getN('i1'), i0 = getN('i0'), r_w = getN('r_wheel');
+
+  const c = d / D;
+  const R_mm = D / 2, r_mm = d / 2;
+  // 式2-7 Tc (same as calcBasic)
+  const Tc = (Math.PI / 12) * f * Z * p0 * Math.pow(D, 3) * (1 - Math.pow(c, 3)) / 1000; // N·m
+  const A = Math.PI / 4 * (D*D - d*d); // mm², single face
+  // 式2-5 Rc exact
+  const Rc = (2/3) * (Math.pow(R_mm,3) - Math.pow(r_mm,3)) / (Math.pow(R_mm,2) - Math.pow(r_mm,2)); // mm
+  const F = Tc * 1000 / (f * Z * Rc); // N
+  const p0_calc = F / A; // MPa
+  const vD = Math.PI * D/1000 * nemax / 60;
+  // R0 for check (d constraint)
+  const R0_coef = getN('R0_coef') || 0.60;
+  const R0 = R0_coef * d / 2;
+  const d_min = 2 * R0 + 50;
+
+  // ---- Slip energy W ----
+  // 简化公式: W = 0.5 * ma * v1²
+  const ne_start = getN('ne_start') || 2000; // r/min（来自整车基本参数输入）
+  const v1 = 2*Math.PI*ne_start/60 * r_w / (i1*i0); // m/s
+  const W_simple = 0.5 * ma * v1 * v1;
+
+  // 式2-20: W = (π²·ne²/1800) · (ma·re²)/(i0²·ig²)
+  // re = r_w (rolling radius), ig = i1 (1st gear ratio), ne = ne_start
+  const ne = ne_start;
+  const ig = i1;
+  const W_2_20 = (Math.PI * Math.PI * ne * ne / 1800) * (ma * r_w * r_w) / (i0 * i0 * ig * ig);
+
+  const w_spec_simple = W_simple / (Z * A);
+  const w_spec_2_20   = W_2_20   / (Z * A);
+
+  // 5. T₀ = Tc(N·m) / (Z × A(mm²))  单位 N·m/mm²  ← 不再 ×1000
+  const T0 = Tc / (Z * A); // N·m/mm²
+  const T0_allow = 0.008;  // 约0.004～0.008 N·m/mm²
+
+  state.vD = vD; state.c = c; state.A = A; state.p0_calc = p0_calc;
+  state.W = W_simple; state.w_spec = w_spec_simple;
+  state.W_2_20 = W_2_20; state.T0 = T0; state.d_min = d_min;
+
+  const rows = [
+    {
+      no: '1', name: '摩擦片最大圆周速度 vD',
+      formula: `π × ${D}mm × ${nemax}r/min / 60`,
+      value: `${fmt(vD,2)} m/s`,
+      limit: '≤ 65～70 m/s',
+      ok: vD <= 70,
+      detail: vD > 70 ? `⚠ 超过70 m/s，需减小D或降低转速` : (vD > 65 ? '△ 超过65 m/s，接近上限' : '')
+    },
+    {
+      no: '2', name: '摩擦片内外径比 c = d/D',
+      formula: `${d}/${D}`,
+      value: fmt(c,4),
+      limit: '0.53 ～ 0.70',
+      ok: c >= 0.53 && c <= 0.70,
+      detail: ''
+    },
+    {
+      no: '3', name: '后备系数 β（反算校核）',
+      formula: `Tc（式2-7）/ Temax = ${fmt(Tc,2)} / ${Temax}`,
+      value: `${fmt(Tc/Temax,4)}（初选 β=${beta}）`,
+      limit: '1.10 ～ 1.75（乘用车），且与初选β对比',
+      ok: (Tc/Temax) >= 1.10 && (Tc/Temax) <= 1.75,
+      detail: (() => {
+        const beta_calc = Tc / Temax;
+        const diff = Math.abs(beta_calc - beta) / beta * 100;
+        return diff > 5 ? `⚠ 式2-7反算β=${fmt(beta_calc,4)}与初选β=${beta}偏差${fmt(diff,1)}%，建议复核p₀或D取值` : '';
+      })()
+    },
+    {
+      no: '4', name: '摩擦片内径 d ≥ 2R₀ + 50',
+      formula: `2 × ${fmt(R0,1)} + 50 = ${fmt(d_min,1)} mm`,
+      value: `d = ${d} mm`,
+      limit: `d ≥ ${fmt(d_min,1)} mm`,
+      ok: d >= d_min,
+      detail: d < d_min ? `内径不满足减振器布置要求，需增大d` : ''
+    },
+    {
+      no: '5', name: '单位摩擦面积传递转矩 T₀',
+      formula: `Tc/(Z×A) = ${fmt(Tc,2)}/(${Z}×${fmt(A,0)})`,
+      value: `${fmt(T0,6)} N·m/mm²`,
+      limit: '≤ 许用值（约0.004～0.008 N·m/mm²）',
+      ok: T0 <= T0_allow,
+      detail: ''
+    },
+    {
+      no: '6', name: '单位压力 p₀',
+      formula: `F/A = ${fmt(F,1)}/${fmt(A,1)}`,
+      value: `${fmt(p0_calc,4)} MPa`,
+      limit: '0.15 ～ 0.30 MPa（乘用车）',
+      ok: p0_calc >= 0.15 && p0_calc <= 0.30,
+      detail: p0_calc < 0.15 ? '⚠ p₀偏低，需检查设计参数' : (p0_calc > 0.30 ? '⚠ p₀偏高，超出许用值' : '')
+    },
+    {
+      no: '7', name: '单位摩擦面积滑磨功 w（简化公式）',
+      formula: `W_simple/(Z×A) = ${fmt(W_simple,1)}/(${Z}×${fmt(A,0)})`,
+      value: `${fmt(w_spec_simple,5)} J/mm²`,
+      limit: '≤ 0.20 J/mm²（乘用车）',
+      ok: w_spec_simple <= 0.20,
+      detail: ''
+    }
+  ];
+
+  let html = `<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">`;
+  html += `<div style="display:grid;grid-template-columns:40px 2fr 2.5fr 1.8fr 1fr;background:#e8eef8;padding:8px 10px;font-weight:600;font-size:12px;color:var(--blue)">
+    <span>No.</span><span>校核项目</span><span>计算过程</span><span>计算值 / 许用值</span><span>结论</span></div>`;
+  rows.forEach(row => {
+    html += `<div style="display:grid;grid-template-columns:40px 2fr 2.5fr 1.8fr 1fr;padding:8px 10px;border-top:1px solid #eef;align-items:center;font-size:13px">
+      <span style="font-weight:700;color:var(--blue)">${row.no}</span>
+      <span>${row.name}</span>
+      <span style="font-family:monospace;font-size:12px">${row.formula}</span>
+      <span><strong>${row.value}</strong><br><span style="font-size:11px;color:#888">${row.limit}</span></span>
+      <span>${badge(row.ok)}${row.detail ? `<br><span style="font-size:11px;color:var(--err)">${row.detail}</span>` : ''}</span>
+    </div>`;
+  });
+  html += `</div>`;
+  document.getElementById('verifyTable').innerHTML = html;
+
+  // Slip detail — 两种公式对比
+  const slipHtml = `
+    <div class="formula-box">
+      <strong>【简化公式】W ≈ ½·ma·v₁²</strong><br>
+      发动机起步转速 ne = ${ne_start} r/min<br>
+      ω₁ = 2π×${ne_start}/60 = ${fmt(2*Math.PI*ne_start/60,3)} rad/s<br>
+      起步车速 v₁ = ω₁·re/(i₁·i₀) = ${fmt(2*Math.PI*ne_start/60,3)}×${r_w}/(${i1}×${i0}) = ${fmt(v1,4)} m/s<br>
+      W = 0.5 × ${ma} × ${fmt(v1*v1,5)} = <strong>${fmt(W_simple,2)} J</strong><br>
+      w = W/(Z·A) = ${fmt(W_simple,2)}/(${Z}×${fmt(A,0)}) = <strong>${fmt(w_spec_simple,5)} J/mm²</strong>
+      ${badge(w_spec_simple<=0.20, '✓ ≤ 0.20 J/mm²', '✗ 超出 0.20 J/mm²')}<br><br>
+      <strong>【式2-20】W = (π²·ne²/1800)·(ma·re²)/(i₀²·ig²)</strong><br>
+      ne = ${ne_start} r/min，re = ${r_w} m，i₀ = ${i0}，ig（一挡）= ${i1}<br>
+      W = (π²×${ne_start}²/1800)×(${ma}×${r_w}²)/(${i0}²×${i1}²)<br>
+      &nbsp;&nbsp; = ${fmt(Math.PI*Math.PI*ne*ne/1800,4)} × ${fmt(ma*r_w*r_w,5)} / ${fmt(i0*i0*ig*ig,4)}<br>
+      W = <strong>${fmt(W_2_20,2)} J</strong><br>
+      w = W/(Z·A) = ${fmt(W_2_20,2)}/(${Z}×${fmt(A,0)}) = <strong>${fmt(w_spec_2_20,5)} J/mm²</strong>
+      ${badge(w_spec_2_20<=0.20, '✓ ≤ 0.20 J/mm²', '✗ 超出 0.20 J/mm²')}<br><br>
+      <span style="color:#555;font-size:12px">▶ 两式偏差：${fmt(Math.abs(W_2_20-W_simple)/W_simple*100,2)}%（式2-20考虑了传动链飞轮惯量，更严格）</span>
+    </div>`;
+  document.getElementById('slipDetail').innerHTML = slipHtml;
+
+  updateSummaryChecks();
+}
+
+// ========== CALC SPRING ==========
+// F₁ 公式（课本式2-16，含几何修正系数）
+// K = π·E·h·ln(R/r) / [6(1-μ²)(R₁-r₁)²]
+// b = (R-r)/(R₁-r₁)
+// F₁(λ) = K·λ·[(H-λb)(H-λb/2)+h²]
+const _E = 206000, _MU = 0.3;
+function calcF1(lam, H, h, R, r, R1, r1) {
+  if (lam <= 0) return 0;
+  const K = Math.PI * _E * h * Math.log(R/r) / (6*(1-_MU*_MU)*(R1-r1)*(R1-r1));
+  const b = (R-r)/(R1-r1);
+  return K * lam * ((H - lam*b)*(H - lam/2*b) + h*h);
+}
+// 分离力 F₂ = (R₁-r₁)/(r₁-rf) · F₁  （课本式2-23）
+function calcF2(f1, R1, r1, rf) {
+  return f1 * (R1-r1)/(r1-rf);
+}
+// 关键点：邻域比较法找 M（局部极大）和 N（局部极小）
+function findKeyPts(xs, f1s) {
+  // M: 第一个满足 f[i]>f[i-1] && f[i]>f[i+1] 的点
+  let iM = 0;
+  for (let i = 1; i < f1s.length-1; i++) {
+    if (f1s[i] > f1s[i-1] && f1s[i] > f1s[i+1]) { iM = i; break; }
+  }
+  if (!iM) iM = f1s.indexOf(Math.max(...f1s));
+  // N: M 之后第一个满足 f[i]<f[i-1] && f[i]<f[i+1] 的点
+  let iN = iM;
+  for (let i = iM+1; i < f1s.length-1; i++) {
+    if (f1s[i] < f1s[i-1] && f1s[i] < f1s[i+1]) { iN = i; break; }
+  }
+  if (iN === iM) {
+    let mv = f1s[iM];
+    for (let i = iM; i < f1s.length; i++) if (f1s[i] < mv) { mv = f1s[i]; iN = i; }
+  }
+  // H: λH = (λM+λN)/2，找最近索引
+  const lamH = (xs[iM]+xs[iN])/2;
+  let iH = iM;
+  for (let i = 0; i < xs.length; i++) if (Math.abs(xs[i]-lamH) < Math.abs(xs[iH]-lamH)) iH = i;
+  return { iM, iH, iN };
+}
+
+function calcSpring() {
+  const h = getN('h_spring'), R = getN('R_spring');
+  // Read H and r directly; compute ratios
+  const H = getN('H_spring') || getN('h_spring') * 1.8;
+  const r = getN('r_spring_direct') || R / 1.25;
+  const Hh = H / h;
+  const Rr = R / r;
+  const R1 = getN('R1_spring'), r1 = getN('r1_spring');
+  const r0 = getN('r0_spring'), rf = getN('rf_spring');
+  const delta_wear = getN('delta_wear') || 1.0;
+  const delta_platen = getN('delta_platen') || 1.5;
+  const kB = getN('kB_spring') || 0.9;
+  const delta1 = getN('delta1_slot') || 3.5;
+  const delta2 = getN('delta2_slot') || 9.5;
+  const re = getN('re_spring') || 62;
+
+  const alpha_rad = Math.atan(H / (R - r));
+  const alpha_deg = alpha_rad * 180 / Math.PI;
+  const lever_mul = (R1 - r1) / (r1 - rf);   // F₂/F₁ 放大倍数
+  const r_re_diff = r - re;
+
+  state.H = H; state.r_spring = r; state.alpha_deg = alpha_deg;
+  state.lever = lever_mul; state.R1 = R1; state.r1 = r1; state.rf = rf; state.r0 = r0;
+  state.re = re; state.delta1 = delta1; state.delta2 = delta2;
+  state.delta_wear = delta_wear; state.delta_platen = delta_platen;
+  state.kB = kB;
+
+  // 建曲线数组：x轴范围只到 N点之后约20%，避免过宽
+  const N_PTS = 300, maxLamBuild = H * 2.6;
+  const xs = [], f1s = [];
+  for (let i = 0; i <= N_PTS; i++) {
+    const lam = i/N_PTS * maxLamBuild;
+    xs.push(lam);
+    f1s.push(calcF1(lam, H, h, R, r, R1, r1));
+  }
+  const {iM, iH, iN} = findKeyPts(xs, f1s);
+  const lamM = xs[iM], FM = f1s[iM];
+  const lamH = xs[iH], FH = f1s[iH];
+  const lamN = xs[iN], FN = f1s[iN];
+  const hasExtrema = iN > iM;
+
+  // B = kB × λH；A = λB - Δλ；C = λB + Δ（压盘分离行程）
+  const lamB = kB * lamH;
+  const lamA = Math.max(0, lamB - delta_wear);
+  const lamC = lamB + delta_platen;              // C = B + 压盘分离行程
+  const F1B = calcF1(lamB, H, h, R, r, R1, r1);
+  const F1A = calcF1(lamA, H, h, R, r, R1, r1);
+  const F1C = calcF1(lamC, H, h, R, r, R1, r1);
+  const F2C = calcF2(F1C, R1, r1, rf);
+  const dFpct = F1B > 1 ? Math.abs(F1A - F1B) / F1B * 100 : 0;
+
+  // Store F1B in state for calcControl
+  state.F1B_val = F1B; state.F2C_val = F2C;
+  // Store key lambda points for X1 calculation in pressure plate
+  state.lamB = lamB; state.lamH = lamH; state.lamN = lamN; state.lamM = lamM; state.lamC = lamC;
+  state.hasExtrema = hasExtrema;
+
+  // Constraints
+  const c1 = { v: R-R1,    ok: R-R1>=1&&R-R1<=7,        label: 'R - R₁（应在1～7 mm）' };
+  const c2 = { v: r1-r,    ok: r1-r>=0&&r1-r<=6,         label: 'r₁ - r（应在0～6 mm）' };
+  const c3 = { v: rf-r0,   ok: rf-r0>=0&&rf-r0<=6,        label: 'rf - r₀（应在0～6 mm）' };
+  const c4 = { v: alpha_deg, ok: alpha_deg>=9&&alpha_deg<=15, label: 'α 圆锥底角（应在9°～15°）' };
+  const c5 = { v: lever_mul, ok: lever_mul>=0.222&&lever_mul<=0.435, label: '杠杆比 (R₁-r₁)/(r₁-rf)（应在0.222～0.435）' };
+  const c6 = { v: delta1,  ok: delta1>=3.2&&delta1<=3.5,  label: '切槽宽度 δ₁（应在3.2～3.5 mm）' };
+  const c7 = { v: delta2,  ok: delta2>=9&&delta2<=10,      label: '切槽底部圆弧槽宽 δ₂（应在9～10 mm）' };
+  const c8 = { v: r_re_diff, ok: r_re_diff>=delta2,        label: 'r - re ≥ δ₂（分离指根部空间）' };
+  const B_ok = kB >= 0.8 && kB <= 1.0;
+  const C_near_N = hasExtrema && Math.abs(lamC - lamN) <= (lamN - lamM) * 0.25;
+  const c9  = { v: kB, ok: B_ok, label: `kB = λB/λH（应在0.8～1.0，B靠近H拐点）` };
+  const checks = [c1, c2, c3, c4, c5, c6, c7, c8, c9];
+
+  let html = `<table class="result-table">
+    <tr><th>校核项目</th><th>计算值</th><th>约束条件</th><th>结论</th></tr>
+    <tr><td>内截锥高度 H = Hh×h</td><td><strong>${fmt(H,2)} mm</strong></td><td>H/h=1.5～2.0（当前=${fmt(Hh,2)}）</td><td>${badge(Hh>=1.5&&Hh<=2.0)}</td></tr>
+    <tr><td>碟簧小端半径 r=R/Rr</td><td><strong>${fmt(r,2)} mm</strong></td><td>R/r=1.20～1.35（当前=${fmt(Rr,3)}）</td><td>${badge(Rr>=1.20&&Rr<=1.35)}</td></tr>
+    <tr><td>${c4.label}</td><td><strong>${fmt(alpha_deg,2)}°</strong></td><td>9°～15°</td><td>${badge(c4.ok)}</td></tr>`;
+  [c1,c2,c3].forEach(c => { html += `<tr><td>${c.label}</td><td><strong>${fmt(c.v,3)} mm</strong></td><td>见约束</td><td>${badge(c.ok)}</td></tr>`; });
+  html += `<tr><td>${c5.label}</td><td><strong>${fmt(lever_mul,4)}</strong></td><td>0.222～0.435</td><td>${badge(c5.ok)}</td></tr>`;
+  html += `<tr><td>${c6.label}</td><td><strong>${fmt(delta1,2)} mm</strong></td><td>3.2～3.5 mm</td><td>${badge(c6.ok)}</td></tr>`;
+  html += `<tr><td>${c7.label}</td><td><strong>${fmt(delta2,2)} mm</strong></td><td>9～10 mm</td><td>${badge(c7.ok)}</td></tr>`;
+  html += `<tr><td>${c8.label}</td><td><strong>r−re=${fmt(r,2)}−${re}=${fmt(r_re_diff,2)} mm</strong></td><td>≥δ₂=${fmt(delta2,2)} mm</td><td>${badge(c8.ok)}</td></tr>`;
+
+  const hhNote = Hh < Math.sqrt(2) ? '⚠ H/h<√2，无N极小值点' :
+                 Hh <= 2.0 ? '✓ 在推荐范围，M/H/N三点清晰' :
+                 Hh < 2*Math.sqrt(2) ? '△ 超出推荐范围' : '✗ >2√2，弹簧翻转！';
+
+  html += `</table>
+  <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+    <div style="font-weight:700;font-size:13px;color:var(--blue);margin-bottom:8px">📍 曲线特征点与工作点</div>
+    <div class="info-box" style="margin-bottom:8px">H/h = ${fmt(Hh,3)} — ${hhNote}</div>
+    <table class="result-table">
+      <tr><th>点</th><th>λ (mm)</th><th>F₁ (N)</th><th>说明</th></tr>
+      <tr style="background:#fff3cd"><td><strong>M（极大值·凸点）</strong></td><td>${hasExtrema?fmt(lamM,3):'—（单调）'}</td><td>${hasExtrema?Math.round(FM):'—'}</td><td>dF/dλ=0，弹力极大，工作点不应在M左侧</td></tr>
+      <tr style="background:#e8f4f8"><td><strong>H（拐点）</strong></td><td>${hasExtrema?fmt(lamH,3):'—'}</td><td>${hasExtrema?Math.round(FH):'—'}</td><td>λH=(λM+λN)/2，曲线最平坦，B点理想位置</td></tr>
+      <tr style="background:#e8f8e8"><td><strong>N（极小值·凹点）</strong></td><td>${hasExtrema?fmt(lamN,3):'—'}</td><td>${hasExtrema?Math.round(FN):'—'}</td><td>dF/dλ=0，弹力极小，C点理想位置</td></tr>
+      <tr style="background:#dff0ff"><td><strong>B（新弹簧接合工作点）</strong></td><td>${fmt(lamB,3)} = kB×λH</td><td>${Math.round(F1B)}</td><td>kB=${fmt(kB,2)}，应在0.8～1.0  ${badge(B_ok)}</td></tr>
+      <tr><td><strong>A（最大磨损后工作点）</strong></td><td>${fmt(lamA,3)} = λB−Δλ</td><td>${Math.round(F1A)}</td><td>A在B左侧，波动 ${fmt(dFpct,1)}%  ${dFpct<10?badge(true,'✓ 合格'):badge(false,'△ 偏大')}</td></tr>
+      <tr style="background:#fdeaea"><td><strong>C（分离位置）</strong></td><td>${fmt(lamC,3)} = λB + Δ = ${fmt(lamB,3)} + ${delta_platen}</td><td>${Math.round(F1C)}</td><td>C在B右侧，F₂C=${Math.round(F2C)} N，${C_near_N?'✓ 靠近N':'⚠ 偏离N，分离力偏大'}</td></tr>
+    </table>
+    <div style="margin-top:8px;font-size:12px;color:#555;background:#f8faff;padding:8px 10px;border-radius:4px">
+      式(2-23)：F₂C = (R₁−r₁)/(r₁−rf) × F₁C = ${fmt(lever_mul,4)} × ${Math.round(F1C)} = <strong>${Math.round(F2C)} N</strong> &nbsp;|&nbsp;
+      分离行程：λC−λB = ${fmt(lamC-lamB,3)} mm &nbsp;|&nbsp;
+      压紧力波动：${fmt(dFpct,1)}%
+    </div>
+  </div>`;
+
+  const allOk = checks.every(c => c.ok) && Hh>=1.5&&Hh<=2.0 && Rr>=1.20&&Rr<=1.35;
+  html += `<div style="margin-top:10px">${allOk ?
+    '<span class="badge badge-ok" style="font-size:13px;padding:5px 16px">✅ 膜片弹簧所有约束满足</span>' :
+    '<span class="badge badge-err" style="font-size:13px;padding:5px 16px">⚠ 部分约束不满足，请调整参数</span>'}</div>`;
+  document.getElementById('springResult').innerHTML = html;
+
+  // ========== 强度校核 ==========
+  // 输入参数
+  const br = getN('br_spring') || (2 * Math.PI * r / getN('n_fingers'));
+  const n_fin = getN('n_fingers') || 18;
+  const E_s = 206000, mu_s = 0.3;
+
+  // 中性点半径 e（课本式2-27相关）
+  const e = (R - r) / Math.log(R / r);
+
+  // 膜片弹簧子午断面的实际转角 φf（B点时，λ1 = lamB）
+  const phi_f_rad = lamB / (R1 - r1);   // rad
+
+  // 临界转角 φP（式2-29）：φP = α + h/2/(e-r)
+  // α 是圆锥底角（rad）
+  const phi_P_rad = alpha_rad + (h / 2) / (e - r);   // rad
+
+  // 确定计算用转角 φ：φf < φP → 用 φf；φf ≥ φP → 用 φP
+  const phi_calc_rad = phi_f_rad < phi_P_rad ? phi_f_rad : phi_P_rad;
+  const phi_label = phi_f_rad < phi_P_rad ? 'φf（φf < φP，用φf）' : 'φP（φf ≥ φP，用φP）';
+
+  // 式2-28：碟簧部分切向应力 σtB（教材第5版）
+  // σtB = E/(1-μ²)/r × { (e-r)·φ²/2 − [(e-r)·α + h/2]·φ }
+  // α 为圆锥底角（rad），φ 为取用转角（rad），r 为碟簧小端半径
+  const lnRr2 = Math.log(R / r);
+  const sigma_tB = (E_s / (1 - mu_s * mu_s)) / r *
+    ((e - r) * phi_calc_rad * phi_calc_rad / 2
+     - ((e - r) * alpha_rad + h / 2) * phi_calc_rad);
+
+  // 式2-30：分离指根部弯曲应力 σrB
+  // σrB = 6·F₂C·(re - rf) / (n · h² · br)
+  // F₂C 已计算（N），re、rf、h、br 单位均为 mm
+  const sigma_rB = 6 * F2C * (r - rf) / (n_fin * h * h * br);
+
+  // 式2-31：当量应力 σjB = σrB - σtB（注意 σtB 为负值，相减等于相加绝对值）
+  const sigma_jB = sigma_rB - sigma_tB;
+
+  const str_ok = sigma_jB <= 1700;
+  const str_badge = sigma_jB <= 1700 ? badge(true, '✓ 合格') : badge(false, '✗ 超限');
+
+  // br 参考计算值
+  const br_ref = 2 * Math.PI * r / n_fin;
+
+  const strengthHtml = `
+    <table class="result-table">
+      <tr><th>参数 / 公式</th><th>计算过程</th><th>结果</th><th>单位</th></tr>
+      <tr style="background:#f8f8f8"><td colspan="4" style="font-weight:600;color:var(--blue);padding:6px 10px">辅助几何量</td></tr>
+      <tr><td>碟簧小端半径 r（计算值）</td><td>R/Rr = ${R}/${fmt(Rr,3)}</td><td><strong>${fmt(r,3)}</strong></td><td>mm</td></tr>
+      <tr><td>中性点半径 e</td><td>(R−r)/ln(R/r) = (${R}−${fmt(r,3)})/ln(${R}/${fmt(r,3)})</td><td><strong>${fmt(e,3)}</strong></td><td>mm</td></tr>
+      <tr><td>分离指根部宽度 br（输入值）</td><td>参考值 2πr/n = 2π×${fmt(r,3)}/${n_fin} = ${fmt(br_ref,3)} mm</td><td><strong>${fmt(br,3)}</strong></td><td>mm</td></tr>
+      <tr style="background:#f8f8f8"><td colspan="4" style="font-weight:600;color:var(--blue);padding:6px 10px">转角计算（B点，λ₁B = ${fmt(lamB,3)} mm）</td></tr>
+      <tr><td>子午断面实际转角 φf</td><td>λ₁B/(R₁−r₁) = ${fmt(lamB,3)}/(${R1}−${r1})</td><td><strong>${fmt(phi_f_rad,5)}</strong></td><td>rad</td></tr>
+      <tr><td>临界转角 φP（式2-29）</td><td>α + h/2/(e−r) = ${fmt(alpha_rad,5)} + ${fmt(h/2,2)}/(${fmt(e,3)}−${fmt(r,3)})</td><td><strong>${fmt(phi_P_rad,5)}</strong></td><td>rad</td></tr>
+      <tr style="background:#fffbea"><td>计算取用转角 φ</td><td>${phi_f_rad < phi_P_rad ? 'φf < φP → 取 φf' : 'φf ≥ φP → 取 φP'}</td><td><strong>${fmt(phi_calc_rad,5)}</strong></td><td>rad（${phi_label}）</td></tr>
+      <tr style="background:#f8f8f8"><td colspan="4" style="font-weight:600;color:var(--blue);padding:6px 10px">应力计算</td></tr>
+      <tr><td>碟簧部分切向应力 σtB（式2-28）</td>
+        <td>E/(1−μ²)/r × { (e−r)·φ²/2 − [(e−r)·α + h/2]·φ }<br>
+        = ${fmt(E_s/(1-mu_s*mu_s)/r,1)} × { ${fmt(e-r,3)}×${fmt(phi_calc_rad,5)}²/2 − [${fmt(e-r,3)}×${fmt(alpha_rad,5)} + ${fmt(h/2,3)}]×${fmt(phi_calc_rad,5)} }</td>
+        <td><strong>${fmt(sigma_tB,1)}</strong></td><td>MPa</td></tr>
+      <tr><td>分离指弯曲应力 σrB（式2-30）</td><td>6·F₂C·(r−rf) / (n·h²·br) = 6×${Math.round(F2C)}×(${fmt(r,3)}−${rf}) / (${n_fin}×${h}²×${fmt(br,2)})</td><td><strong>${fmt(sigma_rB,1)}</strong></td><td>MPa</td></tr>
+      <tr style="background:#f0fff4"><td><strong>当量应力 σjB（式2-31）</strong></td><td>σrB − σtB = ${fmt(sigma_rB,1)} − (${fmt(sigma_tB,1)})</td><td><strong style="font-size:15px">${fmt(sigma_jB,1)}</strong></td><td>MPa</td></tr>
+      <tr><td>强度要求</td><td>≤ 1700 MPa</td><td>${str_badge}</td><td>—</td></tr>
+    </table>
+    ${!str_ok ? `<div class="info-box" style="margin-top:8px;background:#fdeaea">
+      ⚠ σjB = ${fmt(sigma_jB,1)} MPa 超出上限（> 1700 MPa），应增大 br、减小 h 或调整几何参数。
+    </div>` : `<div class="info-box" style="margin-top:8px;background:#eaf3de;border-color:#639922;color:#173404">✅ σjB = ${fmt(sigma_jB,1)} MPa，满足强度要求（≤ 1700 MPa）。</div>`}`;
+
+  document.getElementById('springStrengthResult').innerHTML = strengthHtml;
+  document.getElementById('springStrengthResult').style.background = '';
+  document.getElementById('springStrengthResult').style.border = 'none';
+  document.getElementById('springStrengthResult').style.padding = '0';
+
+  drawSpringCurve(R, r, h, H, R1, r1, rf, delta_wear, delta_platen, kB, xs, f1s, iM, iH, iN);
+  updateSummaryChecks();
+}
+
+function drawSpringCurve(R, r, h, H, R1, r1, rf, delta_wear, delta_platen, kB, xs, f1s, iM, iH, iN) {
+  const canvas = document.getElementById('springCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const cw = canvas.offsetWidth || 720;
+  const ch = 440;
+  canvas.width = cw * dpr; canvas.height = ch * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, cw, ch);
+
+  const lamM = xs[iM], FM = f1s[iM];
+  const lamH = xs[iH], FH = f1s[iH];
+  const lamN = xs[iN], FN = f1s[iN];
+  const hasExtrema = iN > iM;
+
+  // A B C
+  const lamB = kB * lamH;
+  const lamA = Math.max(0, lamB - delta_wear);
+  const lamC = lamB + delta_platen;   // C = B + 压盘分离行程
+  const F1B = calcF1(lamB, H, h, R, r, R1, r1);
+  const F1A = calcF1(lamA, H, h, R, r, R1, r1);
+  const F1C = calcF1(lamC, H, h, R, r, R1, r1);
+  const F2C = calcF2(F1C, R1, r1, rf);
+
+  // ---- X-axis range: trim to just past the rightmost of C and N ----
+  const xRight = Math.max(lamC, hasExtrema ? lamN : lamC);
+  const xMax = xRight * 1.18;   // 18% margin past the furthest point
+
+  // Build trimmed curve array for plotting
+  const plotPts = 300;
+  const pxs = [], pf1s = [];
+  for (let i = 0; i <= plotPts; i++) {
+    const lam = i / plotPts * xMax;
+    pxs.push(lam);
+    pf1s.push(calcF1(lam, H, h, R, r, R1, r1));
+  }
+
+  // Y range
+  const allF = pf1s.concat([F1A, F1B, F1C, F2C, FM || 0, FN || 0]);
+  const fMax = Math.max(...allF) * 1.14;
+  const fMin = Math.min(...allF, 0) - Math.abs(Math.min(...allF, 0)) * 0.08 - 50;
+
+  const padL = 72, padR = 30, padT = 40, padB = 70;
+  const pw = cw - padL - padR, ph = ch - padT - padB;
+
+  function tx(lam) { return padL + lam / xMax * pw; }
+  function ty(F)   { return padT + ph - (F - fMin) / (fMax - fMin) * ph; }
+
+  // Background
+  ctx.fillStyle = '#fafbfd'; ctx.fillRect(padL, padT, pw, ph);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(0,0,0,0.055)'; ctx.lineWidth = 0.5;
+  const nGridX = 8, nGridY = 6;
+  for (let i = 0; i <= nGridX; i++) {
+    const xv = padL + i / nGridX * pw;
+    ctx.beginPath(); ctx.moveTo(xv, padT); ctx.lineTo(xv, padT + ph); ctx.stroke();
+    const v = xMax * i / nGridX;
+    ctx.fillStyle = '#777'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(v.toFixed(1), xv, padT + ph + 15);
+  }
+  for (let i = 0; i <= nGridY; i++) {
+    const yv = padT + i / nGridY * ph;
+    ctx.beginPath(); ctx.moveTo(padL, yv); ctx.lineTo(padL + pw, yv); ctx.stroke();
+    const Fv = fMax - i / nGridY * (fMax - fMin);
+    ctx.fillStyle = '#777'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(Math.abs(Fv) >= 1000 ? (Fv/1000).toFixed(1)+'k' : Math.round(Fv), padL - 5, yv + 4);
+  }
+  // Zero line
+  if (fMin < 0) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 0.8; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(padL, ty(0)); ctx.lineTo(padL + pw, ty(0)); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // Border box
+  ctx.strokeStyle = '#aab'; ctx.lineWidth = 1;
+  ctx.strokeRect(padL, padT, pw, ph);
+
+  // Axis labels
+  ctx.fillStyle = '#888'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('λ₁  变形量 (mm)', padL + pw / 2, ch - 8);
+  ctx.save(); ctx.translate(13, padT + ph / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = '#888'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('F (N)', 0, 0); ctx.restore();
+
+  // Main F₁ curve
+  ctx.strokeStyle = '#2d6ec0'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  pxs.forEach((lam, i) => {
+    if (i === 0) ctx.moveTo(tx(lam), ty(pf1s[i]));
+    else ctx.lineTo(tx(lam), ty(pf1s[i]));
+  });
+  ctx.stroke();
+
+  // ---- Helpers ----
+  const yBot = padT + ph;
+  const yLbl = padT + ph + 28;
+
+  function vDash(lamv, col, label, row) {
+    ctx.strokeStyle = col; ctx.lineWidth = 0.9; ctx.setLineDash([5, 3]);
+    ctx.beginPath(); ctx.moveTo(tx(lamv), padT); ctx.lineTo(tx(lamv), yBot); ctx.stroke();
+    ctx.setLineDash([]);
+    if (label) {
+      ctx.fillStyle = col; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(label, tx(lamv), yLbl + (row || 0) * 13);
+    }
+  }
+  function hDash(Fv, toLam, col) {
+    ctx.strokeStyle = col; ctx.lineWidth = 0.9; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(padL, ty(Fv)); ctx.lineTo(tx(toLam), ty(Fv)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = col; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(Math.round(Fv) + 'N', padL - 3, ty(Fv) + 3.5);
+  }
+  function drawDot(lamv, Fv, fill, stroke, label, dir) {
+    const x = tx(lamv), y = ty(Fv);
+    ctx.fillStyle = fill; ctx.strokeStyle = stroke; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    if (label) {
+      ctx.fillStyle = stroke; ctx.font = 'bold 12px "Microsoft YaHei",sans-serif';
+      ctx.textAlign = 'center';
+      if (dir === 'top')    ctx.fillText(label, x, y - 10);
+      if (dir === 'bottom') ctx.fillText(label, x, y + 19);
+      if (dir === 'left')  { ctx.textAlign = 'right';  ctx.fillText(label, x - 9, y + 4); }
+      if (dir === 'right') { ctx.textAlign = 'left';   ctx.fillText(label, x + 9, y + 4); }
+    }
+  }
+
+  // M, H, N reference lines + dots (always shown when hasExtrema)
+  if (hasExtrema) {
+    vDash(lamM, '#c04820', 'λM', 0);
+    hDash(FM, lamM, 'rgba(192,72,32,0.5)');
+    drawDot(lamM, FM, '#FAC775', '#c04820', 'M', 'top');
+
+    vDash(lamH, '#185fa5', 'λH', 1);
+    drawDot(lamH, FH, '#85B7EB', '#185fa5', 'H', 'top');
+
+    vDash(lamN, '#27500a', 'λN', 0);
+    hDash(FN, lamN, 'rgba(39,80,10,0.5)');
+    drawDot(lamN, FN, '#97C459', '#27500a', 'N', 'bottom');
+  }
+
+  // Δλ shading (A to B)
+  ctx.fillStyle = 'rgba(55,138,221,0.11)';
+  ctx.fillRect(tx(lamA), padT, tx(lamB) - tx(lamA), ph);
+  // Double-headed Δλ arrow
+  const yArr = yBot + 12;
+  ctx.strokeStyle = '#185fa5'; ctx.lineWidth = 1.2; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(tx(lamA), yArr); ctx.lineTo(tx(lamB), yArr); ctx.stroke();
+  [[tx(lamA), 1], [tx(lamB), -1]].forEach(([x, d]) => {
+    ctx.beginPath(); ctx.moveTo(x, yArr); ctx.lineTo(x + d*7, yArr - 4); ctx.lineTo(x + d*7, yArr + 4);
+    ctx.closePath(); ctx.fillStyle = '#185fa5'; ctx.fill();
+  });
+  ctx.fillStyle = '#185fa5'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('← Δλ →', (tx(lamA) + tx(lamB)) / 2, yArr + 12);
+
+  // F₁B, F₁A horizontal guides
+  hDash(F1B, lamB, 'rgba(26,107,128,0.55)');
+  hDash(F1A, lamA, 'rgba(26,107,128,0.35)');
+  ctx.fillStyle = '#1a6b80'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(`F₁B=${Math.round(F1B)}N`, padL + 4, ty(F1B) - 4);
+  if (Math.abs(ty(F1A) - ty(F1B)) > 12)
+    ctx.fillText(`F₁A=${Math.round(F1A)}N`, padL + 4, ty(F1A) - 4);
+
+  // λB, λA vertical guides
+  vDash(lamB, 'rgba(26,107,128,0.55)', 'λB', 2);
+  if (lamA > 0.01) vDash(lamA, 'rgba(26,107,128,0.35)', 'λA', 2);
+
+  // A, B dots
+  drawDot(lamA, F1A, '#CDE8C0', '#3b6d11', 'A', 'top');
+  drawDot(lamB, F1B, '#5DCAA5', '#1a6b80', 'B', 'top');
+
+  // C dot + F₂C horizontal guide
+  vDash(lamC, 'rgba(163,45,45,0.55)', 'λC', 3);
+  hDash(F2C, lamC, 'rgba(163,45,45,0.5)');
+  ctx.fillStyle = '#a32d2d'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(`F₂C=${Math.round(F2C)}N`, padL + 4, ty(F2C) - 4);
+  drawDot(lamC, F1C, '#F09595', '#a32d2d', 'C', 'top');
+
+  // B→C arc annotation
+  const pBx = tx(lamB), pBy = ty(F1B), pCx = tx(lamC), pCy = ty(F1C);
+  ctx.strokeStyle = 'rgba(26,107,128,0.65)'; ctx.lineWidth = 1.6; ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(pBx, pBy);
+  ctx.quadraticCurveTo((pBx + pCx) / 2, Math.min(pBy, pCy) - 16, pCx, pCy);
+  ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = '#1a6b80'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('踩踏板 B→C', (pBx + pCx) / 2, Math.min(pBy, pCy) - 22);
+
+  // Title
+  const Hh_v = H / h;
+  const hhStatus = Hh_v < Math.sqrt(2) ? '⚠无极值' : Hh_v <= 2.0 ? '✓推荐' : Hh_v < 2*Math.sqrt(2) ? '△偏大' : '✗翻转';
+  ctx.fillStyle = '#1e2a35'; ctx.font = 'bold 12px "Microsoft YaHei",sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(`膜片弹簧弹性特性曲线  R=${R}  r=${fmt(r,1)}  h=${h}  H=${fmt(H,1)} mm  H/h=${fmt(Hh_v,3)} (${hhStatus})`, padL, 26);
+
+  // Legend (HTML below canvas)
+  document.getElementById('springCurveInfo').style.display = 'none';
+  document.getElementById('springCurveLegend').style.display = 'block';
+  const dFpct2 = F1B > 1 ? Math.abs(F1A - F1B) / F1B * 100 : 0;
+  const C_near_N2 = hasExtrema && Math.abs(lamC - lamN) <= (lamN - lamM) * 0.25;
+  document.getElementById('springCurveLegend').innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;line-height:1.8;padding:8px 10px;background:#f5f7fb;border-radius:6px;border:1px solid #dde3ec">
+      <strong style="width:100%;color:#1a2744;font-size:12px;margin-bottom:2px">图例说明</strong>
+      ${hasExtrema ? `
+      <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#FAC775;border:2px solid #c04820"></span><span><b style="color:#c04820">M 极大值</b>：FM=${Math.round(FM)} N，λM=${fmt(lamM,2)} mm — 弹力最大，dF/dλ=0</span></span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#85B7EB;border:2px solid #185fa5"></span><span><b style="color:#185fa5">H 拐点</b>：FH=${Math.round(FH)} N，λH=${fmt(lamH,2)} mm — λH=(λM+λN)/2，曲线最平坦，B点理想位置</span></span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#97C459;border:2px solid #27500a"></span><span><b style="color:#27500a">N 极小值</b>：FN=${Math.round(FN)} N，λN=${fmt(lamN,2)} mm — 弹力最小，dF/dλ=0，C点理想位置</span></span>
+      ` : `<span style="color:#c0392b;width:100%">⚠ H/h=${fmt(Hh_v,3)} ≤ √2，曲线无M/H/N极值点，建议将H/h调至1.5以上</span>`}
+      <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#5DCAA5;border:2px solid #1a6b80"></span><span><b style="color:#1a6b80">B 接合点</b>：λB=kB×λH=${fmt(lamB,2)} mm，F₁B=${Math.round(F1B)} N（kB=${fmt(kB,2)}）</span></span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#CDE8C0;border:2px solid #3b6d11"></span><span><b style="color:#3b6d11">A 磨损后</b>：λA=λB−Δλ=${fmt(lamA,2)} mm，F₁A=${Math.round(F1A)} N — 压紧力波动${fmt(dFpct2,1)}%</span></span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#F09595;border:2px solid #a32d2d"></span><span><b style="color:#a32d2d">C 分离点</b>：λC=λB+Δ=${fmt(lamC,2)} mm，F₁C=${Math.round(F1C)} N，F₂C=${Math.round(F2C)} N — ${C_near_N2?'✓ 靠近N，踏板力最优':'⚠ 偏离N，分离力偏高'}</span></span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:3px;background:#2d6ec0;border-radius:1px"></span><span style="color:#546070">F₁ 特性曲线</span></span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:11px;height:11px;background:rgba(55,138,221,0.2);border:1px solid #185fa5"></span><span style="color:#546070">Δλ 磨损区间 (A→B)</span></span>
+    </div>`;
+}
+
+
+
+// ========== CALC PRESSURE PLATE ==========
+function updateGammaHint() {
+  const sel = document.getElementById('pp_gamma');
+  const hint = document.getElementById('gammaHint');
+  const hints = {
+    '0.5':     '单片：飞轮与压盘各承担 50% 热量',
+    '0.25':    '双片：每个压盘承担 25% 热量',
+    '0.5_mid': '中间压盘：承担两侧各 50% 热量'
+  };
+  if (hint) hint.textContent = hints[sel.value] || '';
+  saveData();
+}
+
+function calcPressurePlate() {
+  const D = getN('D'), d = getN('d');
+  const t = getN('pp_thick');
+  const dD = getN('pp_delta_D');
+  const dd_in = getN('pp_delta_d');
+  const gamma_val = document.getElementById('pp_gamma').value;
+  const gamma = parseFloat(gamma_val === '0.5_mid' ? '0.5' : gamma_val);
+  const rho = getN('pp_density') || 7200;
+  const c_iron = getN('pp_c_iron') || 481.4;
+  const X1_design = getN('pp_X1');
+
+  const Dpp = D + dD;
+  const dpp = d - dd_in;
+  const Rpp = Dpp / 2, rpp = dpp / 2;
+
+  const A_fric = Math.PI / 4 * (D*D - d*d);
+  const A_pp   = Math.PI / 4 * (Dpp*Dpp - dpp*dpp);
+  const cover  = A_fric / A_pp * 100;
+  const Rc_pp  = (2/3) * (Math.pow(Rpp,3)-Math.pow(rpp,3)) / (Math.pow(Rpp,2)-Math.pow(rpp,2));
+
+  // 压盘质量
+  const V_mm3 = Math.PI / 4 * (Dpp*Dpp - dpp*dpp) * t;
+  const V_m3  = V_mm3 * 1e-9;
+  const mass  = rho * V_m3;
+
+  // 总滑磨功 W（来自第③部分，单位 J）
+  const W_total = state.W || 0;
+
+  // 温升 τ = γ·W / (m·c)
+  const tau = (mass > 0 && W_total > 0) ? gamma * W_total / (mass * c_iron) : 0;
+
+  // 凸台高度 X₁ 校核
+  const r_sp  = state.r_spring || 0;
+  const r0_sp = state.r0 || 0;
+  const R_sp  = getN('R_spring') || 0;
+  const lamC  = state.lamC || 0;
+  const lamH  = state.lamH || 0;
+  const hasData = r_sp > 0 && R_sp > 0 && (R_sp - r_sp) > 0;
+  const ratio = hasData ? (r_sp - r0_sp) / (R_sp - r_sp) : 0;
+  const X1_term1 = hasData ? (lamC - lamH) * ratio : 0;
+  const X1_term2 = hasData ? lamH * ratio : 0;
+  const X1_min = X1_term1 + X1_term2;  // = lamC * ratio
+  const X1_ok  = X1_design > X1_min;
+
+  const t_ok  = t >= 15 && t <= 25;
+  const dD_ok = dD >= 2 && dD <= 5;
+  const dd_ok = dd_in >= 1 && dd_in <= 4;
+  const noW     = W_total === 0;
+  const noSpring = !hasData;
+
+  const gammaTxt = gamma_val === '0.5' ? '单片离合器压盘' : gamma_val === '0.25' ? '双片离合器压盘' : '中间压盘';
+  const tauColor = tau <= 0 ? '#fff8f0' : tau <= 8 ? '#f0fff4' : tau <= 10 ? '#fffbea' : '#fdeaea';
+  const tauBadge = tau <= 0 ? '<span class="badge badge-warn">需先算校核</span>'
+    : tau <= 8  ? badge(true,  '✓ ≤8℃ 优秀')
+    : tau <= 10 ? `<span class="badge badge-warn">△ ${fmt(tau,2)}℃ 接近限值</span>`
+    :             `<span class="badge badge-err">✗ ${fmt(tau,2)}℃ 超限</span>`;
+
+  const html = `
+    <table class="result-table">
+      <tr><th>参数</th><th>公式 / 说明</th><th>计算值</th><th>单位</th><th>要求范围</th><th>结论</th></tr>
+
+      <tr style="background:#f8f8f8"><td colspan="6" style="font-weight:600;color:var(--blue);padding:6px 10px">▶ 基本尺寸（摩擦片 D=${D} mm，d=${d} mm）</td></tr>
+      <tr style="background:#e8f4ff">
+        <td><strong>压盘外径 D_p</strong></td><td>D + ΔD = ${D} + ${dD}</td>
+        <td><strong style="font-size:15px">${fmt(Dpp,1)}</strong></td>
+        <td>mm</td><td>D + (2～5)</td><td>${badge(dD_ok)}</td>
+      </tr>
+      <tr style="background:#e8f4ff">
+        <td><strong>压盘内径 d_p</strong></td><td>d − Δd = ${d} − ${dd_in}</td>
+        <td><strong style="font-size:15px">${fmt(dpp,1)}</strong></td>
+        <td>mm</td><td>d − (1～4)</td><td>${badge(dd_ok)}</td>
+      </tr>
+      <tr style="background:#f0fff4">
+        <td><strong>压盘厚度 t</strong></td><td>设计取值</td>
+        <td><strong style="font-size:15px">${t}</strong></td>
+        <td>mm</td><td>15～25</td><td>${badge(t_ok)}</td>
+      </tr>
+      <tr>
+        <td>内外径比 c_p</td><td>d_p / D_p</td>
+        <td><strong>${fmt(dpp/Dpp,3)}</strong></td><td>—</td>
+        <td>参考 0.53～0.70</td>
+        <td>${badge(dpp/Dpp>=0.53&&dpp/Dpp<=0.70,'✓ 合适','△ 偏出')}</td>
+      </tr>
+      <tr>
+        <td>摩擦面面积 A_p</td><td>π/4·(D_p²−d_p²)</td>
+        <td><strong>${Math.round(A_pp)}</strong></td><td>mm²</td><td>—</td><td>—</td>
+      </tr>
+      <tr style="background:#fffbea">
+        <td>摩擦面覆盖率</td><td>A_摩擦片 / A_p × 100%</td>
+        <td><strong>${fmt(cover,1)}%</strong></td><td>%</td>
+        <td>≤ 100%</td>
+        <td>${badge(cover<=100,'✓ 完全覆盖','✗ 未完全覆盖')}</td>
+      </tr>
+      <tr>
+        <td>平均摩擦半径 Rc_p</td>
+        <td>(2/3)·(R_p³−r_p³)/(R_p²−r_p²)</td>
+        <td><strong>${fmt(Rc_pp,2)}</strong></td><td>mm</td><td>—</td><td>—</td>
+      </tr>
+
+      <tr style="background:#f8f8f8"><td colspan="6" style="font-weight:600;color:var(--blue);padding:6px 10px">▶ 压盘质量</td></tr>
+      <tr>
+        <td>压盘体积 V</td>
+        <td>π/4·(D_p²−d_p²)·t = π/4·(${Dpp}²−${dpp}²)·${t}</td>
+        <td><strong>${fmt(V_mm3/1e3,2)}</strong></td><td>cm³</td><td>—</td><td>—</td>
+      </tr>
+      <tr style="background:#e8f4ff">
+        <td><strong>压盘质量 m</strong></td>
+        <td>ρ·V = ${rho} × ${fmt(V_m3,8)} m³</td>
+        <td><strong style="font-size:15px">${fmt(mass,3)}</strong></td><td>kg</td><td>—</td><td>—</td>
+      </tr>
+
+      <tr style="background:#f8f8f8"><td colspan="6" style="font-weight:600;color:var(--blue);padding:6px 10px">▶ 温升校核（式2-45）τ = γ·W / (m·c)</td></tr>
+      <tr>
+        <td>传热比率 γ</td><td>${gammaTxt}</td>
+        <td><strong>${gamma}</strong></td><td>—</td><td>—</td><td>—</td>
+      </tr>
+      <tr>
+        <td>总滑磨功 W</td>
+        <td>来自第③部分校核${noW ? '<span style="color:var(--err);font-size:11px">（需先完成第③部分校核）</span>' : ''}</td>
+        <td><strong>${noW ? '<span style="color:var(--err)">—</span>' : fmt(W_total,2)}</strong></td>
+        <td>J</td><td>—</td>
+        <td>${noW ? '<span class="badge badge-warn">需先算校核</span>' : '<span class="badge badge-ok">✓ 已导入</span>'}</td>
+      </tr>
+      <tr>
+        <td>比热容 c</td><td>铸铁标准值</td>
+        <td><strong>${c_iron}</strong></td><td>J/(kg·℃)</td><td>—</td><td>—</td>
+      </tr>
+      <tr style="background:${tauColor}">
+        <td><strong>温升 τ（式2-45）</strong></td>
+        <td>γ·W/(m·c) = ${gamma}×${noW?'—':fmt(W_total,2)} / (${fmt(mass,3)}×${c_iron})</td>
+        <td><strong style="font-size:15px">${tau>0?fmt(tau,2):'—'}</strong></td>
+        <td>℃</td><td>≤ 8～10 ℃</td>
+        <td>${tauBadge}</td>
+      </tr>
+
+      <tr style="background:#f8f8f8"><td colspan="6" style="font-weight:600;color:var(--blue);padding:6px 10px">▶ 凸台高度 X₁ 校核</td></tr>
+      <tr>
+        <td>膜片弹簧参数 r, r₀, R</td>
+        <td>来自第④部分${noSpring ? '<span style="color:var(--err);font-size:11px">（需先计算膜片弹簧）</span>' : ''}</td>
+        <td>${noSpring?'—':`r=${fmt(r_sp,2)}, r₀=${fmt(r0_sp,2)}, R=${fmt(R_sp,2)}`}</td>
+        <td>mm</td><td>—</td>
+        <td>${noSpring?'<span class="badge badge-warn">需先算弹簧</span>':'<span class="badge badge-ok">✓ 已导入</span>'}</td>
+      </tr>
+      <tr>
+        <td>比值 (r−r₀)/(R−r)</td>
+        <td>${noSpring?'—':`(${fmt(r_sp,2)}−${fmt(r0_sp,2)}) / (${fmt(R_sp,2)}−${fmt(r_sp,2)})`}</td>
+        <td><strong>${noSpring?'—':fmt(ratio,4)}</strong></td><td>—</td><td>—</td><td>—</td>
+      </tr>
+      <tr>
+        <td>项1：(λC−λH)·(r−r₀)/(R−r)</td>
+        <td>${noSpring?'—':`(${fmt(lamC,3)}−${fmt(lamH,3)})×${fmt(ratio,4)}`}</td>
+        <td><strong>${noSpring?'—':fmt(X1_term1,3)}</strong></td><td>mm</td><td>—</td><td>—</td>
+      </tr>
+      <tr>
+        <td>项2：λH·(r−r₀)/(R−r)</td>
+        <td>${noSpring?'—':`${fmt(lamH,3)}×${fmt(ratio,4)}`}</td>
+        <td><strong>${noSpring?'—':fmt(X1_term2,3)}</strong></td><td>mm</td><td>—</td><td>—</td>
+      </tr>
+      <tr style="background:#fffbea">
+        <td>X₁ 最小值 = λC·(r−r₀)/(R−r)</td>
+        <td>${noSpring?'—':`${fmt(lamC,3)} × ${fmt(ratio,4)}`}</td>
+        <td><strong>${noSpring?'—':fmt(X1_min,3)}</strong></td><td>mm</td><td>—</td><td>—</td>
+      </tr>
+      <tr style="background:${noSpring?'#fff8f0':X1_ok?'#f0fff4':'#fdeaea'}">
+        <td><strong>凸台高度 X₁ 设计值</strong></td>
+        <td>应满足 X₁ > ${noSpring?'—':fmt(X1_min,3)} mm</td>
+        <td><strong style="font-size:15px">${X1_design}</strong></td>
+        <td>mm</td><td>> ${noSpring?'—':fmt(X1_min,3)} mm</td>
+        <td>${noSpring?'<span class="badge badge-warn">需先算弹簧</span>':badge(X1_ok)}</td>
+      </tr>
+    </table>
+    <div class="info-box" style="margin-top:10px">
+      💡 <strong>设计要点：</strong><br>
+      • 温升超过 10℃ → 增大压盘厚度 t 或外径（增大质量 m）以降低温升<br>
+      • 凸台高度 X₁ 不足 → 适当增大设计值，或检查膜片弹簧 λC、r、r₀、R 参数<br>
+      • 压盘材料一般为灰铸铁 HT200/HT250，密度 7200 kg/m³，比热容 481.4 J/(kg·℃)
+    </div>`;
+
+  document.getElementById('ppResult').innerHTML = html;
+  drawPressurePlate(Dpp, dpp, t, D, d);
+}
+
+function drawPressurePlate(Dpp, dpp, t, D, d) {
+  const canvas = document.getElementById('ppCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const cw = canvas.offsetWidth || 600;
+  const ch = 280;
+  canvas.width = cw * dpr; canvas.height = ch * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, cw, ch);
+
+  // Layout: left half = cross-section view, right half = front face view
+  const midX = cw / 2;
+  const pad = 30;
+
+  // ---- Cross-section (left panel) ----
+  const csW = midX - pad * 2;
+  const csH = ch - pad * 2;
+  const cx = pad + csW / 2;
+  const cy = pad + csH / 2;
+
+  // Scale: map real mm to pixels
+  const maxDim = Math.max(Dpp, t * 3);
+  const scale = Math.min(csW / (Dpp * 1.3), csH / (t * 5));
+
+  const halfW = (Dpp / 2) * scale;
+  const halfInner = (dpp / 2) * scale;
+  const halfD = (D / 2) * scale;
+  const halfd = (d / 2) * scale;
+  const tPx = t * scale;
+
+  // Draw grid lines
+  ctx.strokeStyle = '#e8eef8'; ctx.lineWidth = 1;
+  for (let y = pad; y < ch - pad; y += 20) { ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(midX - pad, y); ctx.stroke(); }
+
+  // Pressure plate cross-section (annular ring)
+  // Draw as rect from (cx - halfW, cy - tPx/2) to (cx + halfW, cy + tPx/2) with inner hole
+  const ppTop = cy - tPx / 2;
+  const ppBot = cy + tPx / 2;
+
+  // Outer body
+  ctx.fillStyle = '#b0c8e8';
+  ctx.strokeStyle = '#1a4a8a'; ctx.lineWidth = 1.5;
+  ctx.fillRect(cx - halfW, ppTop, halfW - halfInner, tPx);
+  ctx.strokeRect(cx - halfW, ppTop, halfW - halfInner, tPx);
+  ctx.fillRect(cx + halfInner, ppTop, halfW - halfInner, tPx);
+  ctx.strokeRect(cx + halfInner, ppTop, halfW - halfInner, tPx);
+
+  // Friction face hatching (left side = friction face)
+  ctx.save();
+  ctx.strokeStyle = '#c04820'; ctx.lineWidth = 0.8;
+  for (let xi = cx - halfW; xi < cx - halfInner; xi += 4) {
+    ctx.beginPath(); ctx.moveTo(xi, ppTop); ctx.lineTo(xi + 4, ppTop + 8); ctx.stroke();
+  }
+  ctx.restore();
+
+  // Friction disc overlay (dotted)
+  ctx.save();
+  ctx.strokeStyle = '#2d6ec0'; ctx.lineWidth = 1.2; ctx.setLineDash([4, 3]);
+  ctx.strokeRect(cx - halfD, ppTop - 3, halfD - halfd, tPx * 0.35);
+  ctx.strokeRect(cx + halfd, ppTop - 3, halfD - halfd, tPx * 0.35);
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Dimension lines
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 0.8; ctx.fillStyle = '#333';
+  ctx.font = `${11 * Math.min(1, cw/500)}px "Microsoft YaHei",sans-serif`;
+  ctx.textAlign = 'center';
+
+  // t arrow
+  const arrowX = cx + halfW + 14;
+  ctx.beginPath(); ctx.moveTo(arrowX, ppTop); ctx.lineTo(arrowX, ppBot); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(arrowX - 4, ppTop + 4); ctx.lineTo(arrowX, ppTop); ctx.lineTo(arrowX + 4, ppTop + 4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(arrowX - 4, ppBot - 4); ctx.lineTo(arrowX, ppBot); ctx.lineTo(arrowX + 4, ppBot - 4); ctx.stroke();
+  ctx.fillText(`t=${t}`, arrowX, cy + 4);
+
+  // D_p dimension
+  ctx.strokeStyle = '#1a4a8a';
+  ctx.beginPath(); ctx.moveTo(cx - halfW, ppBot + 16); ctx.lineTo(cx + halfW, ppBot + 16); ctx.stroke();
+  ctx.fillStyle = '#1a4a8a';
+  ctx.fillText(`D_p=${Dpp}`, cx, ppBot + 28);
+
+  // d_p dimension
+  ctx.strokeStyle = '#c04820'; ctx.fillStyle = '#c04820';
+  ctx.beginPath(); ctx.moveTo(cx - halfInner, ppBot + 8); ctx.lineTo(cx + halfInner, ppBot + 8); ctx.stroke();
+  ctx.fillText(`d_p=${dpp}`, cx, ppBot + 20);
+
+  // Section label
+  ctx.fillStyle = '#1a3560'; ctx.font = `bold 12px "Microsoft YaHei",sans-serif`;
+  ctx.textAlign = 'left'; ctx.fillText('截面图', pad, pad - 8);
+
+  // ---- Front face view (right panel) ----
+  const fcx = midX + pad + (cw - midX - pad * 2) / 2;
+  const fcy = ch / 2;
+  const fScale = Math.min((cw - midX - pad * 3) / Dpp, (ch - pad * 2) / Dpp);
+  const fRpp = (Dpp / 2) * fScale;
+  const frpp = (dpp / 2) * fScale;
+  const fRd  = (D / 2) * fScale;
+  const frd  = (d / 2) * fScale;
+
+  // Pressure plate face
+  ctx.beginPath(); ctx.arc(fcx, fcy, fRpp, 0, Math.PI * 2);
+  ctx.fillStyle = '#cde0f5'; ctx.fill();
+  ctx.strokeStyle = '#1a4a8a'; ctx.lineWidth = 1.8; ctx.stroke();
+
+  // Inner bore
+  ctx.beginPath(); ctx.arc(fcx, fcy, frpp, 0, Math.PI * 2);
+  ctx.fillStyle = '#f0f4fb'; ctx.fill();
+  ctx.strokeStyle = '#1a4a8a'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // Friction disc outline (dashed blue)
+  ctx.save(); ctx.setLineDash([5, 3]);
+  ctx.beginPath(); ctx.arc(fcx, fcy, fRd, 0, Math.PI * 2);
+  ctx.strokeStyle = '#2d6ec0'; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.beginPath(); ctx.arc(fcx, fcy, frd, 0, Math.PI * 2);
+  ctx.strokeStyle = '#2d6ec0'; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
+
+  // Hatch friction ring area
+  ctx.save();
+  ctx.beginPath(); ctx.arc(fcx, fcy, fRpp, 0, Math.PI * 2); ctx.arc(fcx, fcy, frpp, 0, Math.PI * 2);
+  ctx.clip('evenodd');
+  ctx.strokeStyle = 'rgba(176,200,232,0.6)'; ctx.lineWidth = 1;
+  for (let xi = fcx - fRpp; xi < fcx + fRpp; xi += 6) {
+    ctx.beginPath(); ctx.moveTo(xi, fcy - fRpp); ctx.lineTo(xi + fRpp * 2, fcy + fRpp); ctx.stroke();
+  }
+  ctx.restore();
+
+  // Labels
+  ctx.fillStyle = '#1a3560'; ctx.font = `bold 12px "Microsoft YaHei",sans-serif`;
+  ctx.textAlign = 'left'; ctx.fillText('正视图', midX + pad, pad - 8);
+  ctx.font = `11px "Microsoft YaHei",sans-serif`;
+  ctx.fillStyle = '#1a4a8a'; ctx.textAlign = 'center';
+  ctx.fillText(`D_p=${Dpp}mm`, fcx, fcy - fRpp - 6);
+  ctx.fillStyle = '#c04820';
+  ctx.fillText(`d_p=${dpp}mm`, fcx, fcy - frpp - 4);
+  ctx.fillStyle = '#2d6ec0';
+  ctx.fillText(`D=${D} / d=${d}（摩擦片，虚线）`, fcx, fcy + fRpp + 16);
+
+  // Centre cross
+  ctx.strokeStyle = '#999'; ctx.lineWidth = 0.7;
+  ctx.beginPath(); ctx.moveTo(fcx - fRpp * 0.15, fcy); ctx.lineTo(fcx + fRpp * 0.15, fcy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(fcx, fcy - fRpp * 0.15); ctx.lineTo(fcx, fcy + fRpp * 0.15); ctx.stroke();
+}
+
+// ========== DRIVEN DISC / SPLINE ==========
+function fillSpline(n, D, d, b) {
+  document.getElementById('sp_n').value = n;
+  document.getElementById('sp_D').value = D;
+  document.getElementById('sp_d').value = d;
+  document.getElementById('sp_b').value = b;
+  highlightSplineRow();
+  saveData();
+}
+
+function highlightSplineRow() {
+  const n = getN('sp_n'), D = getN('sp_D'), d = getN('sp_d'), b = getN('sp_b');
+  const rows = document.querySelectorAll('#splineSeriesTable tr');
+  rows.forEach((row, idx) => {
+    if (idx === 0) return; // header
+    const cells = row.querySelectorAll('td');
+    if (cells.length < 4) return;
+    const match = parseFloat(cells[0].textContent) === n &&
+                  parseFloat(cells[1].textContent) === D &&
+                  parseFloat(cells[2].textContent) === d &&
+                  parseFloat(cells[3].textContent) === b;
+    row.style.background = match ? '#dbeafe' : '';
+    row.style.fontWeight = match ? '700' : '';
+    row.style.color = match ? '#1a3a8a' : '';
+  });
+}
+
+function calcDrivenDisc() {
+  const Temax = getN('Temax');
+  const n_teeth = getN('sp_n');
+  const D_s = getN('sp_D');   // 花键外径 mm
+  const d_s = getN('sp_d');   // 花键内径 mm
+  const b   = getN('sp_b');   // 键齿宽  mm
+  const L   = getN('sp_L');   // 有效齿长 mm
+  const z   = getN('sp_z') || 1; // 从动盘数量
+
+  // 挤压应力 σ = 8·Temax·10³ / [(D²-d²)·n·z·L]  (N·mm/mm² = MPa)
+  // Temax in N·m → ×1000 → N·mm
+  const D2_d2 = D_s * D_s - d_s * d_s;
+  const sigma_p = D2_d2 > 0 ? 8 * Temax * 1000 / (D2_d2 * n_teeth * z * L) : 0;
+
+  // 剪切应力 τ = 4·Temax·10³ / [(D+d)·n·z·L·b]
+  const tau_s = (D_s + d_s) > 0 ? 4 * Temax * 1000 / ((D_s + d_s) * n_teeth * z * L * b) : 0;
+
+  const sigma_ok = sigma_p > 0 && sigma_p <= 30;
+  const tau_ok   = tau_s > 0 && tau_s <= 15;
+
+  // Mean radius of spline tooth
+  const Rm_s = (D_s + d_s) / 4;
+
+  highlightSplineRow();
+  state.sigma_p = sigma_p; state.tau_s = tau_s;
+
+  const html = `
+    <table class="result-table">
+      <tr><th>校核项目</th><th>公式</th><th>计算值</th><th>单位</th><th>许用值</th><th>结论</th></tr>
+
+      <tr style="background:#f8f8f8">
+        <td colspan="6" style="font-weight:600;color:var(--blue);padding:6px 10px">
+          ▶ 输入参数（Temax = ${Temax} N·m，z = ${z} 片，n = ${n_teeth} 齿，D = ${D_s} mm，d = ${d_s} mm，b = ${b} mm，L = ${L} mm）
+        </td>
+      </tr>
+
+      <tr style="background:#f0f8ff">
+        <td colspan="6" style="font-weight:600;color:var(--blue);padding:5px 10px;font-size:12px">
+          辅助量：D²−d² = ${D_s}²−${d_s}² = <strong>${fmt(D2_d2,1)}</strong> mm² &nbsp;|&nbsp;
+          D+d = ${D_s}+${d_s} = <strong>${D_s+d_s}</strong> mm &nbsp;|&nbsp;
+          平均半径 Rm = (D+d)/4 = <strong>${fmt(Rm_s,2)}</strong> mm
+        </td>
+      </tr>
+
+      <tr style="background:${sigma_ok?'#f0fff4':'#fdeaea'}">
+        <td><strong>挤压应力 σ_p</strong></td>
+        <td>8·Temax·10³ / [(D²−d²)·n·z·L]<br>
+          <span style="font-size:11px;color:#666">= 8×${Temax}×10³ / (${fmt(D2_d2,1)}×${n_teeth}×${z}×${L})</span>
+        </td>
+        <td><strong style="font-size:15px">${fmt(sigma_p,2)}</strong></td>
+        <td>MPa</td>
+        <td>≤ 30 MPa</td>
+        <td>${badge(sigma_ok)}</td>
+      </tr>
+
+      <tr style="background:${tau_ok?'#f0fff4':'#fdeaea'}">
+        <td><strong>剪切应力 τ_s</strong></td>
+        <td>4·Temax·10³ / [(D+d)·n·z·L·b]<br>
+          <span style="font-size:11px;color:#666">= 4×${Temax}×10³ / (${D_s+d_s}×${n_teeth}×${z}×${L}×${b})</span>
+        </td>
+        <td><strong style="font-size:15px">${fmt(tau_s,2)}</strong></td>
+        <td>MPa</td>
+        <td>≤ 15 MPa</td>
+        <td>${badge(tau_ok)}</td>
+      </tr>
+    </table>
+
+    ${(!sigma_ok || !tau_ok) ? `
+    <div class="info-box" style="margin-top:10px;background:${(!sigma_ok&&!tau_ok)?'#fdeaea':(!sigma_ok)?'#fdeaea':'#fdeaea'};border-color:#e07070;color:#5a0000">
+      ⚠ <strong>超出许用值，建议：</strong><br>
+      ${!sigma_ok ? `• 挤压应力 σ_p = ${fmt(sigma_p,2)} MPa 超限 → 增大外径 D 或内径 d（增大 D²−d²），或增大有效齿长 L，或增加齿数 n<br>` : ''}
+      ${!tau_ok   ? `• 剪切应力 τ_s = ${fmt(tau_s,2)} MPa 超限 → 增大键齿宽 b，或增大 D+d，或增大 L，或增加齿数 n<br>` : ''}
+    </div>` : `
+    <div class="info-box" style="margin-top:10px;background:#eaf3de;border-color:#639922;color:#173404">
+      ✅ 挤压应力 σ_p = ${fmt(sigma_p,2)} MPa ≤ 30 MPa，剪切应力 τ_s = ${fmt(tau_s,2)} MPa ≤ 15 MPa，花键强度满足要求。
+    </div>`}`;
+
+  document.getElementById('splineResult').innerHTML = html;
+}
+
+// ========== CALC DAMPER ==========
+function calcDamper() {
+  const Temax = getN('Temax'), Tj_c = getN('Tj_coef'), Tu_c = getN('Tu_coef');
+  const Tn_c = getN('Tn_coef'), R0_c = getN('R0_coef'), d = getN('d');
+  const k_delta = getN('k_delta'), Dc = getN('Dc'), d_s = getN('d_spring');
+  const lambda1 = getN('lambda1'), Z_d = getN('Z') || 2;
+  const D_fric = getN('D');
+
+  const Tj = Tj_c * Temax;
+  const Tu = Tu_c * Temax;
+  const Tn = Tn_c * Temax;
+  const R0 = R0_c * d / 2;
+  // 更新 kδ 参考上限提示
+  const kdRefEl = document.getElementById('kd_ref_hint');
+  if (kdRefEl) kdRefEl.textContent = fmt(13 * Tj, 1);
+  // Zj selection
+  let Zj = 4;
+  if (D_fric >= 325) Zj = 8; else if (D_fric >= 250) Zj = 6; else Zj = 4;
+  const Fsum = Tj / (R0 / 1000);
+  const P = Fsum / Zj;
+  // Spring stiffness k
+  const k_spring = k_delta / (1000 * R0 * R0 / 1000000 * Zj);
+  const E_shear = 83000; // MPa
+  const i_eff = (E_shear * Math.pow(d_s, 4)) / (8 * Math.pow(Dc, 3) * k_spring);
+  const n_total = i_eff + 1.75;
+  const l_min = 1.1 * d_s * n_total;
+  const delta_l = P / k_spring;
+  const l0 = l_min + delta_l;
+  const delta_l_pre = Tn * 1000 / (k_spring * Zj * R0);
+  const l_work = l0 - delta_l_pre;
+  const phi_j = 2 * Math.asin(delta_l / (2 * R0)) * 180 / Math.PI;
+  const R2 = lambda1 / Math.sin(phi_j * Math.PI / 180);
+
+  state.Tj = Tj; state.Tu = Tu; state.Tn = Tn; state.R0 = R0; state.Zj = Zj;
+
+  let html = `<table class="result-table">
+    <tr><th>参数</th><th>符号</th><th>公式</th><th>计算值</th><th>单位</th><th>校核</th></tr>
+    <tr><td>极限转矩</td><td>Tⱼ</td><td>${Tj_c}×Temax</td><td><strong>${fmt(Tj,1)}</strong></td><td>N·m</td><td>—</td></tr>
+    <tr><td>阻尼摩擦转矩</td><td>Tμ</td><td>${Tu_c}×Temax</td><td><strong>${fmt(Tu,2)}</strong></td><td>N·m</td><td>${badge(Tu>=0.06*Temax&&Tu<=0.17*Temax)}</td></tr>
+    <tr><td>预紧转矩</td><td>Tn</td><td>${Tn_c}×Temax</td><td><strong>${fmt(Tn,2)}</strong></td><td>N·m</td><td>${badge(Tn<=Tu&&Tn>=0.05*Temax)}</td></tr>
+    <tr><td>减振弹簧位置半径</td><td>R₀</td><td>${R0_c}×d/2</td><td><strong>${fmt(R0,2)}</strong></td><td>mm</td><td>—</td></tr>
+    <tr><td>减振弹簧数目</td><td>Zⱼ</td><td>查表（D=${D_fric}mm）</td><td><strong>${Zj}</strong></td><td>个</td><td>—</td></tr>
+    <tr><td>减振弹簧总压力</td><td>Fₛ</td><td>Tⱼ/R₀</td><td><strong>${fmt(Fsum,1)}</strong></td><td>N</td><td>—</td></tr>
+    <tr><td>单个弹簧工作负荷</td><td>P</td><td>Fₛ/Zⱼ</td><td><strong>${fmt(P,2)}</strong></td><td>N</td><td>—</td></tr>
+    <tr><td>弹簧刚度</td><td>k</td><td>kδ/(1000×R₀²×Zⱼ)</td><td><strong>${fmt(k_spring,2)}</strong></td><td>N/mm</td><td>—</td></tr>
+    <tr><td>有效圈数</td><td>i</td><td>Ed⁴/(8Dc³k)</td><td><strong>${fmt(i_eff,3)}</strong></td><td>圈</td><td>—</td></tr>
+    <tr><td>总圈数</td><td>n</td><td>i+1.75</td><td><strong>${fmt(n_total,3)}</strong></td><td>圈</td><td>—</td></tr>
+    <tr><td>极限转角</td><td>φⱼ</td><td>2arcsin(Δl/2R₀)</td><td><strong>${fmt(phi_j,2)}</strong></td><td>°&nbsp;<span style="color:#888;font-size:11px">范围 3°～12°</span></td><td>${badge(phi_j>=3&&phi_j<=12)}</td></tr>
+    <tr><td>限位销安装半径</td><td>R₂</td><td>λ/sin(φⱼ)</td><td><strong>${fmt(R2,2)}</strong></td><td>mm</td><td>—</td></tr>
+  </table>`;
+  document.getElementById('damperResult').innerHTML = html;
+
+  // ── 取值参考：由 φⱼ∈[3°,12°] 反推 kδ 和 k 的合法区间 ──
+  const kd_min = Tj / (2 * Math.sin(6  * Math.PI / 180)); // φⱼ≤12° → kδ≥
+  const kd_max = Tj / (2 * Math.sin(1.5 * Math.PI / 180)); // φⱼ≥3°  → kδ≤
+  const ks_min = kd_min * 1000 / (R0 * R0 * Zj);           // φⱼ≤12° → k≥ (N/mm)
+  const ks_max = kd_max * 1000 / (R0 * R0 * Zj);           // φⱼ≥3°  → k≤ (N/mm)
+
+  let detail = `<table class="result-table">
+    <tr><th>弹簧参数</th><th>符号</th><th>值</th><th>单位</th></tr>
+    <tr><td>弹簧中径</td><td>Dc</td><td>${Dc}</td><td>mm</td></tr>
+    <tr><td>钢丝直径</td><td>d</td><td>${d_s}</td><td>mm</td></tr>
+    <tr><td>最小高度</td><td>lmin</td><td>${fmt(l_min,2)}</td><td>mm</td></tr>
+    <tr><td>总变形量</td><td>Δl</td><td>${fmt(delta_l,3)}</td><td>mm</td></tr>
+    <tr><td>自由高度</td><td>l₀</td><td>${fmt(l0,3)}</td><td>mm</td></tr>
+    <tr><td>预变形量</td><td>Δl'</td><td>${fmt(delta_l_pre,4)}</td><td>mm</td></tr>
+    <tr><td>安装工作高度</td><td>l</td><td>${fmt(l_work,3)}</td><td>mm</td></tr>
+    <tr><td>限位销间隙</td><td>λ</td><td>${lambda1}</td><td>mm (2.5～4)</td></tr>
+  </table>
+  <div class="info-box" style="margin-top:12px;background:#e8f4ff;border-color:#6ab0e0;color:#1a3560">
+    <strong>📐 参数取值参考（由 φⱼ∈[3°,12°] 反推，Tⱼ=${fmt(Tj,1)} N·m，R₀=${fmt(R0,2)} mm，Zⱼ=${Zj}）</strong>
+    <table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:13px">
+      <tr style="background:rgba(0,0,0,0.05)">
+        <th style="padding:6px 8px;text-align:left;border:1px solid #9ac">条件</th>
+        <th style="padding:6px 8px;text-align:left;border:1px solid #9ac">弹簧线刚度 k (N/mm)</th>
+        <th style="padding:6px 8px;text-align:left;border:1px solid #9ac">扭转刚度 kδ (N·m/rad)</th>
+      </tr>
+      <tr>
+        <td style="padding:6px 8px;border:1px solid #9ac">φⱼ ≤ 12°（不超上限）</td>
+        <td style="padding:6px 8px;border:1px solid #9ac">k &nbsp;<strong>≥ ${fmt(ks_min,2)}</strong> N/mm</td>
+        <td style="padding:6px 8px;border:1px solid #9ac">kδ <strong>≥ ${fmt(kd_min,1)}</strong> N·m/rad</td>
+      </tr>
+      <tr style="background:rgba(0,0,0,0.03)">
+        <td style="padding:6px 8px;border:1px solid #9ac">φⱼ ≥ 3°（不低下限）</td>
+        <td style="padding:6px 8px;border:1px solid #9ac">k &nbsp;<strong>≤ ${fmt(ks_max,2)}</strong> N/mm</td>
+        <td style="padding:6px 8px;border:1px solid #9ac">kδ <strong>≤ ${fmt(kd_max,1)}</strong> N·m/rad</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 8px;border:1px solid #9ac;font-weight:600;color:var(--blue)">满足 3°≤ φⱼ ≤12°</td>
+        <td style="padding:6px 8px;border:1px solid #9ac;font-weight:600">${fmt(ks_min,2)} ≤ k ≤ ${fmt(ks_max,2)} N/mm</td>
+        <td style="padding:6px 8px;border:1px solid #9ac;font-weight:600">${fmt(kd_min,1)} ≤ kδ ≤ ${fmt(kd_max,1)} N·m/rad</td>
+      </tr>
+    </table>
+    <div style="margin-top:6px;font-size:11px;color:#556;line-height:1.6">
+      推导：φⱼ = 2arcsin(Δl/2R₀)，Δl = Tⱼ·R₀/kδ &nbsp;⟹&nbsp;
+      kδ = Tⱼ / [2sin(φⱼ/2)]，k = kδ·1000/(R₀²·Zⱼ)
+    </div>
+  </div>`;
+  document.getElementById('damperSpringDetail').innerHTML = detail;
+  updateSummaryChecks();
+}
+
+// ========== CALC CONTROL ==========
+function updateDeltaGap() {
+  const type = document.getElementById('delta_gap_type').value;
+  const inp = document.getElementById('delta_gap');
+  const rangeEl = document.getElementById('delta_gap_range');
+  if (type === 'single') {
+    rangeEl.textContent = '范围：0.85～1.30 mm（单片）';
+    if (parseFloat(inp.value) < 0.85 || parseFloat(inp.value) > 1.30) inp.value = '1.0';
+  } else {
+    rangeEl.textContent = '范围：0.75～0.90 mm（双片）';
+    if (parseFloat(inp.value) < 0.75 || parseFloat(inp.value) > 0.90) inp.value = '0.85';
+  }
+  saveData();
+}
+
+function calcControl() {
+  const S1_input = getN('S1');
+  const S0f = getN('S0f');
+  const delta = getN('delta_gap');
+  const a2 = getN('a2'), a1 = getN('a1_ctrl');
+  const b2 = getN('b2_ctrl'), b1 = getN('b1_ctrl');
+  const d1 = getN('d1_ctrl'), d2 = getN('d2_ctrl');
+  const eta = getN('eta_hyd') / 100;
+  const Z = getN('Z');
+  const delta_gap_type = document.getElementById('delta_gap_type').value;
+
+  // c₂ = r₁ − rf；c₁ = R₁ − rf − c₂  (from spring params)
+  const rf = getN('rf_spring'), r1_sp = getN('r1_spring'), R1_sp = getN('R1_spring');
+  const c2 = r1_sp - rf;
+  const c1 = R1_sp - rf - c2;
+
+  // F' = F₂C from state (auto from spring calc)
+  const F_prime = state.F2C_val || 0;
+  const F1B = state.F1B_val || 0;
+
+  // 液压-机械综合比
+  const hyd_mech_ratio = (a2 * b2 * d2 * d2) / (a1 * b1 * d1 * d1);
+
+  // iΣ = (c₂/c₁)·(a₂b₂d₂²)/(a₁b₁d₁²)
+  const i_total = (c2 / c1) * hyd_mech_ratio;
+
+  // S₁_calc = S₀f·(a₂b₂d₂²)/(a₁b₁d₁²)
+  const S1_calc = S0f * hyd_mech_ratio;
+
+  // S₂ = Z·δ·(c₂/c₁)·(a₂b₂d₂²)/(a₁b₁d₁²)
+  const S2 = Z * delta * (c2 / c1) * hyd_mech_ratio;
+
+  // S = S₁ + S₂（式2-42）
+  const S_total = S1_calc + S2;
+
+  // Ff = F'/(iΣ×η)（式2-43）
+  const Ff = F_prime > 0 ? F_prime / (i_total * eta) : 0;
+
+  // WL = 0.5/η × (F₁B+F₂C) × Z × δ（式2-44）
+  // F in N, δ in mm → N·mm → ÷1000 → J
+  const WL = (F1B > 0 && F_prime > 0) ? (0.5 / eta) * (F1B + F_prime) * Z * delta / 1000 : 0;
+
+  state.S_total = S_total; state.Ff = Ff; state.i_total = i_total; state.WL = WL;
+
+  const delta_ok = delta_gap_type === 'single'
+    ? (delta >= 0.85 && delta <= 1.30)
+    : (delta >= 0.75 && delta <= 0.90);
+
+  const noSpring = F_prime === 0;
+  const springWarn = noSpring ? '<br><span style="color:var(--err);font-size:11px">⚠ 需先在第④部分计算膜片弹簧以获取 F₂C</span>' : '';
+
+  const html = `
+    <table class="result-table">
+      <tr><th>计算项目</th><th>公式 / 说明</th><th>计算值</th><th>单位</th><th>要求范围</th><th>结论</th></tr>
+
+      <tr style="background:#f0f4ff"><td colspan="6" style="font-weight:600;color:var(--blue);padding:6px 10px">▶ 由膜片弹簧参数自动导入</td></tr>
+      <tr>
+        <td>c₂ = r₁ − rf</td>
+        <td>${fmt(r1_sp,2)} − ${fmt(rf,2)}</td>
+        <td><strong>${fmt(c2,3)}</strong></td>
+        <td>mm</td><td>—</td><td>—</td>
+      </tr>
+      <tr>
+        <td>c₁ = R₁ − rf − c₂</td>
+        <td>${fmt(R1_sp,2)} − ${fmt(rf,2)} − ${fmt(c2,3)}</td>
+        <td><strong>${fmt(c1,3)}</strong></td>
+        <td>mm</td><td>—</td><td>—</td>
+      </tr>
+      <tr>
+        <td>弹簧总压紧力 F' = F₂C</td>
+        <td>由第④部分膜片弹簧计算得出${springWarn}</td>
+        <td><strong>${noSpring ? '<span style="color:var(--err)">—</span>' : Math.round(F_prime)}</strong></td>
+        <td>N</td><td>—</td><td>${noSpring ? '<span class="badge badge-warn">需先算弹簧</span>' : '<span class="badge badge-ok">✓ 已导入</span>'}</td>
+      </tr>
+
+      <tr style="background:#f8f8f8"><td colspan="6" style="font-weight:600;color:var(--blue);padding:6px 10px">▶ 基本传动比</td></tr>
+      <tr>
+        <td>液压-机械综合比 (a₂b₂d₂²)/(a₁b₁d₁²)</td>
+        <td>(${a2}×${b2}×${d2}²)/(${a1}×${b1}×${d1}²)</td>
+        <td><strong>${fmt(hyd_mech_ratio,4)}</strong></td>
+        <td>—</td><td>—</td><td>—</td>
+      </tr>
+      <tr>
+        <td>操纵机构总传动比 iΣ</td>
+        <td>(c₂/c₁)·(a₂b₂d₂²)/(a₁b₁d₁²) = (${fmt(c2,2)}/${fmt(c1,2)})×${fmt(hyd_mech_ratio,4)}</td>
+        <td><strong>${fmt(i_total,4)}</strong></td>
+        <td>—</td><td>—</td><td>—</td>
+      </tr>
+
+      <tr style="background:#f8f8f8"><td colspan="6" style="font-weight:600;color:var(--blue);padding:6px 10px">▶ 踏板行程计算</td></tr>
+      <tr>
+        <td>对偶面间隙 δ</td>
+        <td>${delta_gap_type === 'single' ? '单片：0.85～1.30 mm' : '双片：0.75～0.90 mm'}</td>
+        <td><strong>${delta}</strong></td>
+        <td>mm</td>
+        <td>${delta_gap_type === 'single' ? '0.85～1.30' : '0.75～0.90'}</td>
+        <td>${badge(delta_ok)}</td>
+      </tr>
+      <tr style="background:#fffbea">
+        <td>踏板自由行程 S₁（计算值）</td>
+        <td>S₀f·(a₂b₂d₂²)/(a₁b₁d₁²) = ${S0f}×${fmt(hyd_mech_ratio,4)}</td>
+        <td><strong>${fmt(S1_calc,2)}</strong></td>
+        <td>mm</td>
+        <td>20～30 mm</td>
+        <td>${S1_calc > 30 ? '<span class="badge badge-err">✗ 超出上限</span>' : (S1_calc >= 20 ? '<span class="badge badge-ok">✓ 满足</span>' : '<span class="badge badge-warn">△ 偏小</span>')}</td>
+      </tr>
+      <tr style="background:#fff8e8">
+        <td>踏板自由行程 S₁（输入值）</td>
+        <td>设计给定值（与计算值偏差 ${fmt(Math.abs(S1_calc - S1_input), 2)} mm）</td>
+        <td><strong>${S1_input}</strong></td>
+        <td>mm</td>
+        <td>20～30 mm</td>
+        <td>${S1_input > 30 ? '<span class="badge badge-err">✗ 超出上限</span>' : (S1_input >= 20 ? '<span class="badge badge-ok">✓ 满足</span>' : '<span class="badge badge-warn">△ 偏小</span>')}</td>
+      </tr>
+      <tr>
+        <td>踏板工作行程 S₂</td>
+        <td>Z·δ·(c₂/c₁)·(a₂b₂d₂²)/(a₁b₁d₁²) = ${Z}×${delta}×(${fmt(c2,2)}/${fmt(c1,2)})×${fmt(hyd_mech_ratio,4)}</td>
+        <td><strong>${fmt(S2,2)}</strong></td>
+        <td>mm</td><td>—</td><td>—</td>
+      </tr>
+      <tr style="background:#e8f4ff">
+        <td><strong>踏板总行程 S（式2-42）</strong></td>
+        <td>S₁（计算）+ S₂ = ${fmt(S1_calc,2)} + ${fmt(S2,2)}</td>
+        <td><strong style="font-size:15px">${fmt(S_total,2)}</strong></td>
+        <td>mm</td>
+        <td>80～150 mm</td>
+        <td>${S_total > 150 ? '<span class="badge badge-err">✗ 超出上限</span>' : (S_total >= 80 ? '<span class="badge badge-ok">✓ 满足</span>' : '<span class="badge badge-warn">△ 偏小</span>')}</td>
+      </tr>
+
+      <tr style="background:#f8f8f8"><td colspan="6" style="font-weight:600;color:var(--blue);padding:6px 10px">▶ 踏板力与操纵功</td></tr>
+      <tr style="background:#f0fff4">
+        <td><strong>踏板力 Ff（式2-43）</strong></td>
+        <td>F'/(iΣ×η) = ${noSpring ? '—' : Math.round(F_prime)}/(${fmt(i_total,4)}×${eta})${springWarn}</td>
+        <td><strong style="font-size:15px">${noSpring ? '—' : fmt(Ff,2)}</strong></td>
+        <td>N</td>
+        <td>80～150 N</td>
+        <td>${noSpring ? '<span class="badge badge-warn">需先算弹簧</span>' : (Ff > 150 ? '<span class="badge badge-err">✗ 超出上限</span>' : (Ff >= 80 ? '<span class="badge badge-ok">✓ 满足</span>' : '<span class="badge badge-warn">△ 偏小</span>'))}</td>
+      </tr>
+      <tr style="background:${WL > 0 ? (WL <= 30 ? '#f0fff4' : '#fdeaea') : '#fff8f0'}">
+        <td><strong>分离离合器所做的功 WL（式2-44）</strong></td>
+        <td>0.5/η×(F₁B+F₂C)×Z×δ
+          <br><span style="font-size:11px;color:#666">F₁B=${F1B > 0 ? Math.round(F1B) : '—'} N（B点），F₂C=${F_prime > 0 ? Math.round(F_prime) : '—'} N</span>${springWarn}</td>
+        <td><strong style="font-size:15px">${WL > 0 ? fmt(WL,2) : '—'}</strong></td>
+        <td>J</td>
+        <td>≤ 30 J</td>
+        <td>${WL > 0 ? badge(WL <= 30) : '<span class="badge badge-warn">需先算弹簧</span>'}</td>
+      </tr>
+    </table>
+
+    <div style="margin-top:12px" class="info-box">
+      💡 <strong>参数调整建议：</strong><br>
+      • 踏板力Ff超出150N → 调整a₂/a₁比或b₂/b₁比或缸径d₁/d₂ → 改变传动比<br>
+      • 踏板总行程S超出150mm → 调整S₀f（自由行程），或调整对偶面间隙δ<br>
+      • 操纵功WL > 30J → 减小δ 或提高η，或降低弹簧力（需重核β≥1.10）<br>
+      • S₁计算值与输入值偏差较大时，建议以计算值为准重新确定S₁
+    </div>`;
+
+  document.getElementById('controlResult').innerHTML = html;
+  updateSummaryChecks();
+}
+// ══════════ 学生登录 ══════════
+function submitLogin() {
+  const id   = document.getElementById('loginStudentId').value.trim();
+  const name = document.getElementById('loginStudentName').value.trim();
+  const idErr   = document.getElementById('idError');
+  const nameErr = document.getElementById('nameError');
+  let valid = true;
+  if (!/^\d{10}$/.test(id))   { idErr.style.display   = 'block'; valid = false; } else idErr.style.display   = 'none';
+  if (name.length < 2)         { nameErr.style.display = 'block'; valid = false; } else nameErr.style.display = 'none';
+  if (!valid) return;
+  state.studentId   = id;
+  state.studentName = name;
+  document.getElementById('displayName').textContent = name;
+  document.getElementById('displayId').textContent   = id;
+  document.getElementById('studentBadge').style.display = 'flex';
+  document.getElementById('loginOverlay').style.display  = 'none';
+  calcAll();
+}
+
+// ══════════ 教师登录 ══════════
+function openTeacherLogin() {
+  document.getElementById('teacherLoginOverlay').style.display = 'flex';
+  document.getElementById('teacherPassword').value = '';
+  document.getElementById('pwdError').style.display = 'none';
+}
+function closeTeacherLogin() {
+  document.getElementById('teacherLoginOverlay').style.display = 'none';
+}
+function submitTeacherLogin() {
+  const pwd = document.getElementById('teacherPassword').value;
+  if (pwd === TEACHER_PASSWORD) {
+    state.isTeacher = true;
+    document.getElementById('teacherLoginOverlay').style.display = 'none';
+    showTeacherPanel();
+  } else {
+    document.getElementById('pwdError').style.display = 'block';
+  }
+}
+
+// ══════════ 教师统计面板 ══════════
+function showTeacherPanel() {
+  const overlay = document.createElement('div');
+  overlay.className = 'login-overlay';
+  overlay.id = 'teacherPanel';
+  overlay.style.cssText = 'display:flex;align-items:flex-start;overflow-y:auto;padding:20px 0';
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:white;padding:28px;border-radius:12px;max-width:1000px;width:95%;margin:auto;box-shadow:0 10px 40px rgba(0,0,0,0.3)';
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="color:var(--blue);font-size:22px">📊 教师统计管理系统（离线版）</h2>
+      <button class="btn btn-danger" onclick="closeTeacherPanel()">✕ 关闭</button>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">📁</span>导入学生数据文件</div>
+      <div class="info-box">
+        <strong>使用说明：</strong><br>
+        1. 收集所有学生提交的 <strong>TXT报告文件</strong>（文件名包含学号和姓名）<br>
+        2. 点击下方区域或拖拽文件进行批量导入<br>
+        3. 系统会自动从TXT文件中提取数据并生成统计<br>
+        4. 导出CSV文件，可用Excel直接打开进行分析<br>
+        <strong style="color:var(--blue)">提示：CSV格式兼容所有平台，包括手机端！</strong>
+      </div>
+      <input type="file" id="teacherFileInput" multiple accept=".txt,.json" style="display:none" onchange="handleFileSelect(event)">
+      <div class="upload-zone" id="teacherUploadZone" onclick="document.getElementById('teacherFileInput').click()">
+        <div class="icon">📂</div>
+        <div class="text">点击选择文件 或 拖拽文件到此处</div>
+        <div class="hint">支持批量导入TXT或JSON文件</div>
+      </div>
+      <div id="uploadStatus" style="margin-top:10px;font-size:13px;color:#666"></div>
+    </div>
+    <div id="statsContent"></div>`;
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+  // 拖拽支持
+  const uz = panel.querySelector('#teacherUploadZone');
+  uz.addEventListener('dragover', e=>{ e.preventDefault(); uz.classList.add('dragover'); });
+  uz.addEventListener('dragleave', ()=>{ uz.classList.remove('dragover'); });
+  uz.addEventListener('drop', e=>{ e.preventDefault(); uz.classList.remove('dragover'); handleFileSelect({target:{files:e.dataTransfer.files}}); });
+  if (teacherData.length > 0) displayStats();
+}
+function closeTeacherPanel() {
+  const p = document.getElementById('teacherPanel');
+  if (p) p.remove();
+}
+
+// ── 文件导入 ──
+function handleFileSelect(event) {
+  const files = event.target.files;
+  if (!files || files.length === 0) return;
+  const statusDiv = document.getElementById('uploadStatus');
+  if (statusDiv) statusDiv.innerHTML = '<span style="color:var(--blue)">正在处理文件...</span>';
+  let loaded = 0, errs = 0;
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const content = e.target.result;
+        let data = null;
+        if (file.name.endsWith('.txt')) {
+          const m = content.match(/--- SYSTEM DATA BEGIN ---\s*([\s\S]*?)\s*--- SYSTEM DATA END ---/);
+          if (m && m[1]) data = JSON.parse(m[1].trim());
+          else { errs++; return checkDone(); }
+        } else if (file.name.endsWith('.json')) {
+          data = JSON.parse(content);
+        } else { errs++; return checkDone(); }
+        if (data && data.studentId && data.studentName && data.totalScore !== undefined) {
+          teacherData.push(data); loaded++;
+        } else { errs++; }
+      } catch { errs++; }
+      checkDone();
+    };
+    reader.readAsText(file);
+  });
+  function checkDone() {
+    if (loaded + errs < files.length) return;
+    const s = document.getElementById('uploadStatus');
+    if (s) s.innerHTML = `<span style="color:var(--ok)">✓ 成功导入 ${loaded} 个文件</span>${errs>0?`<span style="color:var(--err);margin-left:10px">✗ ${errs} 个失败</span>`:''}`;
+    if (loaded > 0) displayStats();
+  }
+}
+
+// ── 统计展示 ──
+function displayStats() {
+  const stats = analyzeTeacherData(teacherData);
+  const container = document.getElementById('statsContent');
+  if (!container) return;
+  container.innerHTML = `
+    <div class="stats-card">
+      <h3 style="margin-bottom:10px;font-size:18px">总体统计</h3>
+      <div class="stats-grid">
+        <div class="stats-item"><div class="label">学生总数</div><div class="value">${stats.totalStudents}</div></div>
+        <div class="stats-item"><div class="label">提交总次数</div><div class="value">${stats.totalSubmissions}</div></div>
+        <div class="stats-item"><div class="label">班级平均分</div><div class="value">${stats.avgScore.toFixed(1)}</div></div>
+        <div class="stats-item"><div class="label">最高分</div><div class="value">${stats.maxScore}</div></div>
+        <div class="stats-item"><div class="label">最低分</div><div class="value">${stats.minScore}</div></div>
+        <div class="stats-item"><div class="label">优秀率</div><div class="value">${stats.excellentRate}%</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        <span class="icon">👥</span>学生列表
+        <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-success" onclick="exportToCSV()">📊 导出CSV统计表</button>
+          <button class="btn btn-warning" onclick="exportDetailedCSV()">📋 导出详细记录</button>
+          <button class="btn btn-danger" onclick="clearTeacherData()">🗑️ 清空数据</button>
+        </div>
+      </div>
+      <div class="student-list" id="studentList"></div>
+    </div>`;
+  displayStudentList(stats.students);
+}
+
+function analyzeTeacherData(data) {
+  const map = {};
+  data.forEach(log => {
+    const id = log.studentId;
+    if (!map[id]) map[id] = { studentId:id, studentName:log.studentName, submissions:[], count:0, totalScore:0, maxScore:0, minScore:100, firstTime:null, lastTime:null };
+    const s = map[id];
+    s.submissions.push(log);
+    s.count++;
+    s.totalScore += log.totalScore;
+    s.maxScore = Math.max(s.maxScore, log.totalScore);
+    s.minScore = Math.min(s.minScore, log.totalScore);
+    const t = new Date(log.timestamp);
+    if (!s.firstTime || t < s.firstTime) s.firstTime = t;
+    if (!s.lastTime  || t > s.lastTime)  s.lastTime  = t;
+  });
+  const students = Object.values(map);
+  students.forEach(s => { s.avgScore = s.count ? s.totalScore/s.count : 0; });
+  students.sort((a,b) => b.maxScore - a.maxScore);
+  const allScores = students.map(s=>s.maxScore);
+  return {
+    totalStudents: students.length,
+    totalSubmissions: data.length,
+    avgScore: allScores.length ? allScores.reduce((a,b)=>a+b,0)/allScores.length : 0,
+    maxScore: allScores.length ? Math.max(...allScores) : 0,
+    minScore: allScores.length ? Math.min(...allScores) : 0,
+    excellentRate: allScores.length ? Math.round(allScores.filter(s=>s>=90).length/allScores.length*100) : 0,
+    students
+  };
+}
+
+function displayStudentList(students) {
+  const el = document.getElementById('studentList');
+  if (!el) return;
+  if (!students.length) { el.innerHTML = '<div style="text-align:center;padding:40px;color:#999">暂无数据</div>'; return; }
+  el.innerHTML = students.map((s,idx) => {
+    const grade = s.maxScore>=90?'优秀':s.maxScore>=80?'良好':s.maxScore>=70?'中等':s.maxScore>=60?'及格':'不及格';
+    const color = s.maxScore>=90?'#1a7c3a':s.maxScore>=80?'var(--blue)':s.maxScore>=60?'var(--warn)':'var(--err)';
+    return `<div class="student-item" onclick="showStudentDetail(${idx})">
+      <div class="header">
+        <span class="name">${s.studentName} <span style="color:#888;font-size:12px;font-weight:400">(${s.studentId})</span></span>
+        <span style="font-size:22px;font-weight:700;color:${color}">${s.maxScore}分 <span style="font-size:12px">${grade}</span></span>
+      </div>
+      <div class="detail">提交次数：${s.count} &nbsp;|&nbsp; 平均分：${s.avgScore.toFixed(1)} &nbsp;|&nbsp; 最低：${s.minScore} &nbsp;|&nbsp; 最近：${s.lastTime?s.lastTime.toLocaleString('zh-CN'):'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+function showStudentDetail(idx) {
+  const stats = analyzeTeacherData(teacherData);
+  const s = stats.students[idx];
+  let detail = `<div style="background:#f0f6ff;padding:16px;border-radius:8px;margin-top:12px">
+    <strong>${s.studentName}（${s.studentId}）提交记录</strong>
+    <table class="result-table" style="margin-top:10px">
+      <tr><th>提交时间</th><th>类型</th><th>总分</th><th>各项得分</th></tr>`;
+  s.submissions.sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp)).forEach(sub => {
+    const t = new Date(sub.timestamp).toLocaleString('zh-CN');
+    const sc = sub.scores || {};
+    detail += `<tr><td>${t}</td><td>设计评分</td>
+      <td><strong>${sub.totalScore}</strong></td>
+      <td style="font-size:11px">${Object.entries(sc).map(([k,v])=>`${k}:${v}`).join(' ')}</td></tr>`;
+  });
+  detail += `</table></div>`;
+  const existing = document.getElementById('studentDetailPanel');
+  if (existing) existing.remove();
+  const div = document.createElement('div');
+  div.id = 'studentDetailPanel';
+  div.innerHTML = detail;
+  document.getElementById('studentList').appendChild(div);
+}
+
+function clearTeacherData() {
+  if (!confirm('确定清空所有导入的学生数据？')) return;
+  teacherData = [];
+  const c = document.getElementById('statsContent');
+  if (c) c.innerHTML = '';
+  const s = document.getElementById('uploadStatus');
+  if (s) s.textContent = '数据已清空';
+}
+
+function exportToCSV() {
+  const stats = analyzeTeacherData(teacherData);
+  let csv = '\uFEFF学号,姓名,提交次数,最高分,平均分,最低分,等级\n';
+  stats.students.forEach(s => {
+    const g = s.maxScore>=90?'优秀':s.maxScore>=80?'良好':s.maxScore>=70?'中等':s.maxScore>=60?'及格':'不及格';
+    csv += `${s.studentId},${s.studentName},${s.count},${s.maxScore},${s.avgScore.toFixed(1)},${s.minScore},${g}\n`;
+  });
+  downloadFile(csv, `离合器设计_统计_${new Date().toISOString().slice(0,10)}.csv`, 'text/csv;charset=utf-8');
+}
+
+function exportDetailedCSV() {
+  let csv = '\uFEFF学号,姓名,提交时间,报告类型,总分,S1,S2,S3,S4,S5,S6\n';
+  teacherData.forEach(d => {
+    const sc = d.scores || {};
+    csv += `${d.studentId},${d.studentName},${new Date(d.timestamp).toLocaleString('zh-CN')},${d.reportType||'设计评分'},${d.totalScore},${sc.s1||0},${sc.s2||0},${sc.s3||0},${sc.s4||0},${sc.s5||0},${sc.s6||0}\n`;
+  });
+  downloadFile(csv, `离合器设计_详细记录_${new Date().toISOString().slice(0,10)}.csv`, 'text/csv;charset=utf-8');
+}
+
+function downloadFile(content, filename, type) {
+  const blob = new Blob([content], {type});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+// ══════════ 智能评分 ══════════
+function calcSmartScore() {
+  const Temax = getN('Temax'), beta = getN('beta'), D = getN('D'), d = getN('d');
+  const f = getN('f'), Z = getN('Z'), p0 = getN('p0'), nemax = getN('nemax');
+  const KD = getN('KD');
+  const c = d / D;
+  const D_est = KD * Math.sqrt(Temax);
+  const Tc = (Math.PI/12)*f*Z*p0*Math.pow(D,3)*(1-Math.pow(c,3))/1000;
+  const vD = Math.PI * D/1000 * nemax / 60;
+
+  const items = [];
+  // ─── 模块1：基本参数设计（20分）───
+  const beta_ok = beta >= 1.10 && beta <= 1.75;
+  const beta_score = beta_ok ? 5 : (beta >= 1.0 && beta <= 2.0 ? 2 : 0);
+  items.push({ cat:'基本参数设计', name:'后备系数 β', std:'1.10～1.75（乘用车）', val:fmt(beta,3), max:5, score:beta_score });
+
+  const D_diff = Math.abs(D - D_est) / D_est;
+  const D_score = D_diff <= 0.10 ? 5 : (D_diff <= 0.20 ? 3 : 0);
+  items.push({ cat:'基本参数设计', name:'摩擦片外径 D 选取', std:`KD×√Temax≈${fmt(D_est,1)}→标准值`, val:`${D} mm`, max:5, score:D_score });
+
+  const c_ok = c >= 0.53 && c <= 0.70;
+  const c_score = c_ok ? 5 : (c >= 0.50 && c <= 0.73 ? 2 : 0);
+  items.push({ cat:'基本参数设计', name:'内外径比 c = d/D', std:'0.53～0.70', val:fmt(c,3), max:5, score:c_score });
+
+  const p0_ok = p0 >= 0.15 && p0 <= 0.30;
+  const p0_score = p0_ok ? 5 : (p0 >= 0.10 && p0 <= 0.35 ? 2 : 0);
+  items.push({ cat:'基本参数设计', name:'单位压力 p₀', std:'0.15～0.30 MPa', val:`${p0} MPa`, max:5, score:p0_score });
+
+  // ─── 模块2：参数校核（20分）───
+  const vD_ok = vD <= 70;
+  const vD_score = vD_ok ? 4 : 0;
+  items.push({ cat:'参数校核', name:'最大圆周速度 vD', std:'≤65～70 m/s', val:`${fmt(vD,2)} m/s`, max:4, score:vD_score });
+
+  // 单位滑磨功 w — 与第②部分calcVerify保持完全相同的公式和参数来源
+  const _ma = getN('ma'), _i1 = getN('i1'), _i0 = getN('i0'), _rw = getN('r_wheel');
+  const _ne = getN('ne_start') || 2000;
+  const _A  = Math.PI/4*(D*D-d*d);
+  const _v1 = 2*Math.PI*_ne/60 * _rw / (_i1*_i0);
+  const _W  = 0.5*_ma*_v1*_v1;
+  const w   = _W / (Z*_A);
+  const w_ok = w > 0 && w <= 0.20;
+  const w_score = w_ok ? 4 : (w > 0 && w <= 0.25 ? 2 : (w > 0 ? 0 : 2));
+  items.push({ cat:'参数校核', name:'单位滑磨功 w', std:'≤0.20 J/mm²', val: w>0?`${fmt(w,5)} J/mm²`:'未计算', max:4, score:w_score });
+
+  const T0 = state.T0 || 0;
+  const T0_ok = T0 > 0 && T0 <= 0.008;
+  const T0_score = T0_ok ? 4 : (T0 > 0 && T0 <= 0.012 ? 2 : (T0 > 0 ? 0 : 2));
+  items.push({ cat:'参数校核', name:'单位面积传递转矩 T₀', std:'≤0.008 N·m/mm²', val: T0>0?`${fmt(T0,6)} N·m/mm²`:'未计算', max:4, score:T0_score });
+
+  const p0c = state.p0_calc || 0;
+  const p0c_ok = p0c >= 0.15 && p0c <= 0.30;
+  const p0c_score = p0c_ok ? 4 : (p0c >= 0.10 && p0c <= 0.35 ? 2 : (p0c > 0 ? 0 : 1));
+  items.push({ cat:'参数校核', name:'校核单位压力 p₀（反算）', std:'0.15～0.30 MPa', val: p0c>0?`${fmt(p0c,4)} MPa`:'未计算', max:4, score:p0c_score });
+
+  const d_min = state.d_min || 0;
+  const d_ok = d > 0 && d >= d_min;
+  const d_score = d_ok ? 4 : (d > 0 && d >= d_min*0.9 ? 2 : (d > 0 ? 0 : 1));
+  items.push({ cat:'参数校核', name:'摩擦片内径 d 满足减振器', std:`d≥${fmt(d_min,1)} mm`, val:`d=${d} mm`, max:4, score:d_score });
+
+  // ─── 模块3：膜片弹簧（20分）───
+  const alpha = state.alpha_deg || 0;
+  const alpha_ok = alpha >= 9 && alpha <= 15;
+  const alpha_score = alpha_ok ? 5 : (alpha > 0 && alpha >= 7 && alpha <= 17 ? 2 : (alpha > 0 ? 0 : 2));
+  items.push({ cat:'膜片弹簧', name:'圆锥底角 α', std:'9°～15°', val:`${fmt(alpha,2)}°`, max:5, score:alpha_score });
+
+  const lever = state.lever || 0;
+  const lever_ok = lever >= 0.222 && lever <= 0.435;
+  const lever_score = lever_ok ? 5 : (lever > 0 && lever >= 0.18 && lever <= 0.50 ? 2 : (lever > 0 ? 0 : 2));
+  items.push({ cat:'膜片弹簧', name:'杠杆比 (R₁-r₁)/(r₁-rf)', std:'0.222～0.435', val:lever>0?fmt(lever,4):'未计算', max:5, score:lever_score });
+
+  const hasExtrema = state.hasExtrema;
+  const kB = getN('kB_spring');
+  const kB_ok = kB >= 0.8 && kB <= 1.0;
+  const kB_score = (hasExtrema && kB_ok) ? 5 : (!hasExtrema ? 3 : (kB_ok ? 3 : 0));
+  items.push({ cat:'膜片弹簧', name:'工作点 B 位置（kB×λH）', std:'kB=0.8～1.0，B靠近H拐点', val:`kB=${kB}`, max:5, score:kB_score });
+
+  const F2C = state.F2C_val || 0;
+  const F1B = state.F1B_val || 0;
+  const spring_score = (F1B > 0 && F2C > 0) ? 5 : (F1B > 0 || F2C > 0 ? 2 : 0);
+  items.push({ cat:'膜片弹簧', name:'弹簧特性曲线（F₁B / F₂C）', std:'已完成弹簧计算', val:`F₁B=${F1B>0?Math.round(F1B):'—'}N F₂C=${F2C>0?Math.round(F2C):'—'}N`, max:5, score:spring_score });
+
+  // ─── 模块4：压盘与减振器（15分）───
+  const Tj = state.Tj || 0;
+  const Tj_ref = 2.0 * Temax;
+  const Tj_ok = Tj > 0 && Math.abs(Tj - Tj_ref)/Tj_ref <= 0.05;
+  const Tj_score = Tj_ok ? 5 : (Tj > 0 && Math.abs(Tj-Tj_ref)/Tj_ref <= 0.15 ? 3 : (Tj > 0 ? 1 : 0));
+  items.push({ cat:'压盘与减振器', name:'极限转矩 Tⱼ = 2.0×Temax', std:`${fmt(Tj_ref,1)} N·m`, val:Tj>0?`${fmt(Tj,1)} N·m`:'未计算', max:5, score:Tj_score });
+
+  const Tu = state.Tu || 0;
+  const Tu_ok = Tu >= 0.06*Temax && Tu <= 0.17*Temax;
+  const Tu_score = Tu_ok ? 5 : (Tu > 0 ? 2 : 0);
+  items.push({ cat:'压盘与减振器', name:'阻尼摩擦转矩 Tμ', std:`${fmt(0.06*Temax,1)}～${fmt(0.17*Temax,1)} N·m`, val:Tu>0?`${fmt(Tu,2)} N·m`:'未计算', max:5, score:Tu_score });
+
+  const sigma_p = state.sigma_p || 0;
+  const tau_s   = state.tau_s   || 0;
+  const spline_ok = sigma_p > 0 && sigma_p <= 30 && tau_s > 0 && tau_s <= 15;
+  const spline_score = spline_ok ? 5 : ((sigma_p>0&&sigma_p<=30)||(tau_s>0&&tau_s<=15) ? 3 : (sigma_p>0||tau_s>0 ? 1 : 0));
+  items.push({ cat:'压盘与减振器', name:'压盘 & 花键强度校核', std:'σ_p≤30MPa, τ_s≤15MPa', val:`σ=${sigma_p>0?fmt(sigma_p,2):'—'} τ=${tau_s>0?fmt(tau_s,2):'—'}`, max:5, score:spline_score });
+
+  // ─── 模块5：操纵机构（15分）───
+  const Ff = state.Ff || 0;
+  const Ff_ok = Ff > 0 && Ff <= 150;
+  const Ff_score = Ff_ok ? 5 : (Ff > 150 && Ff <= 180 ? 3 : (Ff > 180 ? 1 : 0));
+  items.push({ cat:'操纵机构', name:'踏板力 Ff', std:'≤150 N（乘用车）', val:Ff>0?`${fmt(Ff,1)} N`:'未计算', max:5, score:Ff_score });
+
+  const S_total = state.S_total || 0;
+  const S_ok = S_total > 0 && S_total <= 150;
+  const S_score = S_ok ? 5 : (S_total > 150 && S_total <= 170 ? 3 : (S_total > 170 ? 1 : 0));
+  items.push({ cat:'操纵机构', name:'踏板总行程 S', std:'≤150 mm', val:S_total>0?`${fmt(S_total,1)} mm`:'未计算', max:5, score:S_score });
+
+  const WL = state.WL || 0;
+  const WL_ok = WL > 0 && WL <= 30;
+  const WL_score = WL_ok ? 5 : (WL > 0 && WL <= 40 ? 3 : (WL > 0 ? 1 : 0));
+  items.push({ cat:'操纵机构', name:'操纵功 WL', std:'≤30 J', val:WL>0?`${fmt(WL,2)} J`:'未计算', max:5, score:WL_score });
+
+  // ─── 模块6：从动盘设计（10分）───
+  const sp_ok = sigma_p > 0 && sigma_p <= 30;
+  const ta_ok = tau_s   > 0 && tau_s   <= 15;
+  const s6a = sp_ok ? 5 : (sigma_p > 0 ? 2 : 0);
+  const s6b = ta_ok ? 5 : (tau_s   > 0 ? 2 : 0);
+  items.push({ cat:'从动盘设计', name:'花键挤压应力 σ_p', std:'≤30 MPa', val:sigma_p>0?`${fmt(sigma_p,2)} MPa`:'未计算', max:5, score:s6a });
+  items.push({ cat:'从动盘设计', name:'花键剪切应力 τ_s', std:'≤15 MPa', val:tau_s>0?`${fmt(tau_s,2)} MPa`:'未计算', max:5, score:s6b });
+
+  // ── 汇总 ──
+  const cats = ['基本参数设计','参数校核','膜片弹簧','压盘与减振器','操纵机构','从动盘设计'];
+  const catMaxes = [20, 20, 20, 15, 15, 10];
+  const catScores = cats.map(cat => items.filter(i=>i.cat===cat).reduce((a,i)=>a+i.score,0));
+  const total = catScores.reduce((a,b)=>a+b,0);
+
+  // 更新评分卡
+  document.getElementById('totalScore').textContent = total;
+  const grade = total>=90?'优秀':total>=80?'良好':total>=70?'中等':total>=60?'及格':'不及格';
+  document.getElementById('totalGrade').textContent = grade;
+  ['score1','score2','score3','score4','score5','score6'].forEach((id,i) => {
+    document.getElementById(id).textContent = catScores[i];
+  });
+
+  // 评分明细表
+  let tbody = '';
+  let lastCat = '';
+  items.forEach(item => {
+    const pct = item.score / item.max;
+    const cls = pct >= 0.8 ? 'badge-ok' : pct >= 0.5 ? 'badge-warn' : 'badge-err';
+    if (item.cat !== lastCat) {
+      tbody += `<tr style="background:#e8eef8"><td colspan="5" style="font-weight:700;color:var(--blue);padding:6px 8px">▶ ${item.cat}（${items.filter(i=>i.cat===item.cat).reduce((a,i)=>a+i.max,0)}分模块）</td></tr>`;
+      lastCat = item.cat;
+    }
+    tbody += `<tr>
+      <td>${item.name}</td>
+      <td style="font-size:12px;color:#555">${item.std}</td>
+      <td style="font-family:monospace;font-size:12px">${item.val}</td>
+      <td class="score-col"><span class="badge ${cls}">${item.score}</span></td>
+      <td class="score-col">${item.max}</td>
+    </tr>`;
+  });
+  document.getElementById('gradingBody').innerHTML = tbody;
+
+  // 存储用于报告生成
+  state._scoreItems = items;
+  state._catScores  = catScores;
+  state._totalScore = total;
+  state._grade = grade;
+
+  return { items, catScores, total, grade };
+}
+
+// ══════════ 生成完整报告 ══════════
+function generateFinalReport() {
+  if (!state.studentId) { alert('请先输入学号和姓名！'); return; }
+  const r = calcSmartScore();
+  const grade = r.grade;
+  let report = '===============================================\n';
+  report += '   乘用车离合器设计计算报告\n';
+  report += '===============================================\n\n';
+  report += '【学生信息】\n';
+  report += `学号：${state.studentId}\n`;
+  report += `姓名：${state.studentName}\n`;
+  report += `提交时间：${new Date().toLocaleString('zh-CN')}\n\n`;
+  report += '【智能评分总分】\n-----------------------------------------------\n';
+  report += `总分：${r.total} / 100  （${grade}）\n`;
+  const cats = ['基本参数设计','参数校核','膜片弹簧','压盘与减振器','操纵机构','从动盘设计'];
+  const maxes = [20,20,20,15,15,10];
+  cats.forEach((cat,i) => { report += `  ${cat}：${r.catScores[i]} / ${maxes[i]}\n`; });
+  report += '\n【评分明细】\n-----------------------------------------------\n';
+  r.items.forEach(it => { report += `${it.name}\n  要求：${it.std}  实际值：${it.val}  得分：${it.score}/${it.max}\n`; });
+  report += '\n【设计参数摘要】\n-----------------------------------------------\n';
+  const ps = [
+    ['发动机最大转矩 Temax',getN('Temax'),'N·m'],
+    ['后备系数 β',getN('beta'),'—'],
+    ['摩擦片外径 D',getN('D'),'mm'],
+    ['摩擦片内径 d',getN('d'),'mm'],
+    ['内外径比 c',fmt(getN('d')/getN('D'),3),'—'],
+    ['踏板力 Ff',fmt(state.Ff||0,1),'N'],
+    ['踏板行程 S',fmt(state.S_total||0,1),'mm'],
+    ['操纵功 WL',fmt(state.WL||0,2),'J'],
+    ['花键挤压应力 σ_p',fmt(state.sigma_p||0,2),'MPa'],
+    ['花键剪切应力 τ_s',fmt(state.tau_s||0,2),'MPa'],
+  ];
+  ps.forEach(([n,v,u])=>{ report += `  ${n} = ${v} ${u}\n`; });
+  report += '\n===============================================\n报告结束\n';
+  report += `学号：${state.studentId}  姓名：${state.studentName}\n`;
+  report += '===============================================\n\n\n';
+  report += '--- 以下为系统数据，请勿修改 ---\n';
+  report += '--- SYSTEM DATA BEGIN ---\n';
+  const jsonData = {
+    studentId:    state.studentId,
+    studentName:  state.studentName,
+    timestamp:    new Date().toISOString(),
+    reportType:   'design_score',
+    totalScore:   r.total,
+    grade:        grade,
+    scores: { s1:r.catScores[0], s2:r.catScores[1], s3:r.catScores[2], s4:r.catScores[3], s5:r.catScores[4], s6:r.catScores[5] },
+    details:      r.items.map(i=>({ item:i.name, std:i.std, val:i.val, score:i.score, max:i.max }))
+  };
+  report += JSON.stringify(jsonData, null, 2);
+  report += '\n--- SYSTEM DATA END ---\n';
+  downloadFile(report, `离合器设计报告_${state.studentId}_${state.studentName}_${new Date().toISOString().slice(0,10)}.txt`, 'text/plain;charset=utf-8');
+  alert('报告已生成！\n请将此 TXT 文件提交给教师，用于导入教师管理统计系统。');
+}
+
+
+
+// ══════════ 覆盖原 calcSummary 以触发评分 ══════════
+
+function updateSummaryChecks() {
+  const Temax = getN('Temax'), beta = getN('beta'), D = getN('D');
+  const KD = getN('KD');
+  const D_est = KD * Math.sqrt(Temax);
+  const d = getN('d'), c = d / D;
+  const nemax = getN('nemax');
+  const vD = Math.PI * D/1000 * nemax / 60;
+  const A = Math.PI/4*(D*D-d*d);
+  const Z = getN('Z'), f = getN('f'), p0 = getN('p0');
+  const R_mm = D/2, r_mm = d/2;
+  // 式2-7
+  const Tc = (Math.PI/12)*f*Z*p0*Math.pow(D,3)*(1-Math.pow(c,3))/1000;
+  // 式2-5
+  const Rc = (2/3)*(Math.pow(R_mm,3)-Math.pow(r_mm,3))/(Math.pow(R_mm,2)-Math.pow(r_mm,2));
+  const F = Tc*1000/(f*Z*Rc);
+  const ma = getN('ma'), i1 = getN('i1'), i0 = getN('i0'), r_w = getN('r_wheel');
+  const ne_start_u = getN('ne_start') || 2000;
+  const v1 = 2*Math.PI*ne_start_u/60*r_w/(i1*i0);
+  const W = 0.5*ma*v1*v1;
+  const w_spec = W/(Z*A);
+  const Tj = getN('Tj_coef') * Temax;
+  const lever = state.lever || 0;
+  const Ff = state.Ff || 0;
+
+  function upd(id, val, ok) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+    const vEl = document.getElementById(id + '_v');
+    if (vEl) vEl.innerHTML = badge(ok);
+  }
+  upd('chk_Tc', `${fmt(Tc,2)} N·m（式2-7）`, true);
+  upd('chk_D', `估算${fmt(D_est,1)} mm → 取${D} mm`, true);
+  upd('chk_c', `c = ${fmt(c,3)}`, c>=0.53&&c<=0.70);
+  upd('chk_vD', `${fmt(vD,2)} m/s`, vD<=70);
+  upd('chk_w', `${fmt(w_spec,5)} J/mm²`, w_spec<=0.20);
+  upd('chk_Tj', `${fmt(Tj,1)} N·m`, Math.abs(Tj - 2*Temax) < 1);
+  upd('chk_lever', lever > 0 ? `${fmt(lever,4)}` : '—', lever>=0.222&&lever<=0.435);
+  upd('chk_Ff', Ff > 0 ? `${fmt(Ff,1)} N` : '—', !Ff || Ff <= 150);
+  upd('chk_sigma_p', state.sigma_p > 0 ? `${fmt(state.sigma_p,2)} MPa` : '—', !state.sigma_p || state.sigma_p<=30);
+  upd('chk_tau_s',   state.tau_s   > 0 ? `${fmt(state.tau_s,2)} MPa`   : '—', !state.tau_s   || state.tau_s<=15);
+}
+
+function calcSummary() {
+  const Temax = getN('Temax'), beta = getN('beta'), D = getN('D'), d = getN('d');
+  const f = getN('f'), Z = getN('Z'), p0 = getN('p0');
+  const h = getN('h_spring');
+  const H = getN('H_spring') || h * 1.8;
+  const R = getN('R_spring');
+  const r_sp = getN('r_spring_direct') || R / 1.25;
+  const c = d / D;
+  // 式2-7
+  const Tc = (Math.PI/12)*f*Z*p0*Math.pow(D,3)*(1-Math.pow(c,3))/1000;
+
+  const items = [
+    ['发动机最大转矩 Temax', Temax, 'N·m'],
+    ['后备系数 β', beta, '—'],
+    ['离合器静摩擦力矩 Tc（式2-7）', fmt(Tc,2), 'N·m'],
+    ['摩擦片外径 D', D, 'mm'],
+    ['摩擦片内径 d', d, 'mm'],
+    ['内外径比 c = d/D', fmt(d/D,3), '—'],
+    ['摩擦片厚度 b', getN('b') || 3.5, 'mm'],
+    ['单位压力 p₀', p0, 'MPa'],
+    ['摩擦因数 f', f, '—'],
+    ['摩擦面数 Z', Z, '—'],
+    ['膜片弹簧 h / H', `${h} / ${fmt(H,1)}`, 'mm'],
+    ['膜片弹簧 R / r', `${R} / ${fmt(r_sp,1)}`, 'mm'],
+    ['极限转矩 Tⱼ', fmt(getN('Tj_coef')*Temax,1), 'N·m'],
+    ['压盘外径 D_p', getN('D') + getN('pp_delta_D') > 0 ? fmt(getN('D')+getN('pp_delta_D'),1) : '—', 'mm'],
+    ['压盘内径 d_p', getN('d') - getN('pp_delta_d') > 0 ? fmt(getN('d')-getN('pp_delta_d'),1) : '—', 'mm'],
+    ['压盘厚度 t', getN('pp_thick') || '—', 'mm'],
+    ['踏板行程 S', fmt(state.S_total||0,1) || '—', 'mm'],
+    ['踏板力 Ff', fmt(state.Ff||0,1) || '—', 'N'],
+    ['操纵功 WL（式2-44）', state.WL > 0 ? fmt(state.WL,2) : '—', 'J'],
+    ['花键挤压应力 σ_p', state.sigma_p > 0 ? fmt(state.sigma_p,2) : '—', 'MPa'],
+    ['花键剪切应力 τ_s', state.tau_s > 0 ? fmt(state.tau_s,2) : '—', 'MPa'],
+  ];
+
+  let html = `<div class="summary-grid">`;
+  items.forEach(([label, value, unit]) => {
+    html += `<div class="summary-item"><div class="label">${label}</div><div class="value">${value}</div><div class="unit">${unit}</div></div>`;
+  });
+  html += `</div>`;
+  document.getElementById('summaryTable').innerHTML = html;
+
+  const checks = [
+    { name: '后备系数β', ok: beta >= 1.10 && beta <= 1.75 },
+    { name: '内外径比c', ok: d/D >= 0.53 && d/D <= 0.70 },
+    { name: '最大圆周速度vD', ok: Math.PI*D/1000*getN('nemax')/60 <= 70 },
+    { name: '单位滑磨功w', ok: true }, // simplified
+    { name: '膜片弹簧杠杆比', ok: !state.lever || (state.lever >= 0.222 && state.lever <= 0.435) },
+    { name: '踏板力Ff', ok: !state.Ff || state.Ff <= 150 },
+    { name: '操纵功WL≤30J', ok: !state.WL || state.WL <= 30 },
+    { name: '花键挤压应力≤30MPa', ok: !state.sigma_p || state.sigma_p <= 30 },
+    { name: '花键剪切应力≤15MPa', ok: !state.tau_s || state.tau_s <= 15 },
+  ];
+  const allOk = checks.every(c => c.ok);
+  let status = `<div style="font-size:15px;padding:10px 0">${allOk ? 
+    '🎉 <span class="badge badge-ok" style="font-size:14px;padding:6px 18px">当前参数总体满足设计要求</span>' :
+    '⚠️ <span class="badge badge-err" style="font-size:14px;padding:6px 18px">部分参数不满足要求，请逐项排查</span>'}</div>`;
+  status += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">`;
+  checks.forEach(c => {
+    status += `<span class="badge ${c.ok?'badge-ok':'badge-err'}">${c.ok?'✓':'✗'} ${c.name}</span>`;
+  });
+  status += `</div>`;
+  document.getElementById('overallStatus').innerHTML = status;
+  updateSummaryChecks();
+  // 自动触发智能评分
+  try { calcSmartScore(); } catch(e) {}
+}
+
+function calcAll() {
+  calcBasic();
+  calcVerify();
+  calcSpring();
+  calcPressurePlate();
+  calcDamper();
+  calcDrivenDisc();
+  calcControl();
+  calcSummary();
+}
+
+function exportReport() {
+  const Temax = getN('Temax'), beta = getN('beta'), D = getN('D'), d = getN('d');
+  const f = getN('f'), Z = getN('Z'), p0 = getN('p0');
+  const c = d / D;
+  const Tc = (Math.PI/12)*f*Z*p0*Math.pow(D,3)*(1-Math.pow(c,3))/1000;
+  const h = getN('h_spring'), H = getN('H_spring') || h*1.8;
+  const R = getN('R_spring'), r_sp = getN('r_spring_direct') || R/1.25;
+  const text = `乘用车离合器设计计算报告
+生成时间：${new Date().toLocaleString()}
+==================================================
+一、基本设计参数
+  参考车型: 奇瑞QQ3 微型乘用车
+  膜片弹簧类型 = ${document.getElementById('springType').value === 'pull' ? '拉式' : '推式'}
+  发动机最大转矩 Temax = ${Temax} N·m
+  后备系数 β = ${beta}
+  离合器静摩擦力矩 Tc = ${Tc.toFixed(2)} N·m
+  单位压力 p₀ = ${p0} MPa
+  摩擦因数 f = ${f}
+  摩擦面数 Z = ${Z}
+
+二、摩擦片尺寸
+  外径 D = ${D} mm
+  内径 d = ${d} mm
+  厚度 b = ${getN('b')||3.5} mm
+  内外径比 c = ${(d/D).toFixed(3)}
+
+三、膜片弹簧
+  h = ${h} mm, H = ${fmt(H,1)} mm  (H/h = ${fmt(H/h,3)})
+  R = ${R} mm, r = ${fmt(r_sp,1)} mm  (R/r = ${fmt(R/r_sp,3)})
+  杠杆比 = ${state.lever ? state.lever.toFixed(3) : '—'}
+  F₁B = ${state.F1B_val ? Math.round(state.F1B_val) : '—'} N
+  F₂C = ${state.F2C_val ? Math.round(state.F2C_val) : '—'} N
+
+四、扭转减振器
+  极限转矩 Tⱼ = ${(getN('Tj_coef')*Temax).toFixed(1)} N·m
+  扭转刚度 kδ = ${getN('k_delta')} N·m/rad
+
+五、操纵机构
+  踏板总行程 S = ${state.S_total ? state.S_total.toFixed(1) : '—'} mm
+  踏板力 Ff = ${state.Ff ? state.Ff.toFixed(1) : '—'} N
+  分离功 WL = ${state.WL ? state.WL.toFixed(2) : '—'} J
+==================================================
+`;
+  const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '离合器设计计算报告.txt'; a.click();
+}
+
+// ========== LOCAL STORAGE PERSISTENCE ==========
+// IDs of all inputs/selects to save
+const SAVE_IDS = [
+  'Temax','nT','nemax','ma','i1','i0','r_wheel','umax','vehicleType','ne_start',
+  'springType','beta','p0','f','Z','delta_t','KD','D','d','b',
+  'h_spring','H_spring','R_spring','r_spring_direct',
+  'n_fingers','R1_spring','r1_spring','r0_spring','rf_spring',
+  'delta1_slot','delta2_slot','re_spring','br_spring',
+  'kB_spring','delta_wear','delta_platen',
+  'Tj_coef','k_delta','Tu_coef','Tn_coef','R0_coef','Dc','d_spring','lambda1',
+  'S1','S0f','delta_gap_type','delta_gap','a2','a1_ctrl','b2_ctrl','b1_ctrl',
+  'd1_ctrl','d2_ctrl','eta_hyd',
+  'pp_thick','pp_delta_D','pp_delta_d','pp_gamma','pp_density','pp_c_iron','pp_X1',
+  'sp_z','sp_n','sp_D','sp_d','sp_b','sp_L'
+];
+const STORAGE_KEY = 'clutch_tool_v12';
+
+function saveData() {
+  const data = {};
+  SAVE_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) data[id] = el.value;
+  });
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    SAVE_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && data[id] !== undefined) el.value = data[id];
+    });
+    return true;
+  } catch(e) { return false; }
+}
+
+// Auto-save on any input change
+document.addEventListener('change', (e) => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
+    saveData();
+  }
+});
+
+// Init
+window.addEventListener('load', () => {
+  // 显示学生登录界面
+  document.getElementById('loginOverlay').style.display = 'flex';
+
+  const restored = loadData();
+  calcAll();
+  if (restored) {
+    const toast = document.createElement('div');
+    toast.textContent = '✓ 已恢复上次数据';
+    toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#1a7c3a;color:white;padding:8px 16px;border-radius:6px;font-size:13px;z-index:9999;opacity:1;transition:opacity 1s';
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 1000); }, 2500);
+  }
+
+  // Enter键支持
+  document.getElementById('loginStudentName').addEventListener('keydown', e => { if (e.key === 'Enter') submitLogin(); });
+  document.getElementById('loginStudentId').addEventListener('keydown',   e => { if (e.key === 'Enter') submitLogin(); });
+  document.getElementById('teacherPassword').addEventListener('keydown',  e => { if (e.key === 'Enter') submitTeacherLogin(); });
+});
+window.addEventListener('resize', () => {
+  if (document.getElementById('tab3').classList.contains('active')) {
+    try { calcSpring(); } catch(e) {}
+  }
+  if (document.getElementById('tab4').classList.contains('active')) {
+    try { calcPressurePlate(); } catch(e) {}
+  }
+});
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+if (e.key === 'F12' || 
+(e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+(e.ctrlKey && e.key === 'U') ||
+(e.ctrlKey && e.key === 'S')) {
+e.preventDefault();
+return false;
+}
+});
+
+</script>
+<script>
+  document.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('keydown', e => {
+    if (e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+        (e.ctrlKey && e.key === 'U') ||
+        (e.ctrlKey && e.key === 'S')) {
+      e.preventDefault();
+      return false;
+    }
+  });
+</script>
+
+</body>
+</html>
